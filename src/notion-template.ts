@@ -271,10 +271,12 @@ export function normalizeNotionId(value: string): string | null {
 
 /**
  * Boundary parser for the canonical URLs the Notion API returns alongside
- * every resource: only an absolute https URL on notion.so or a subdomain
- * qualifies. Null is the modeled "not captured", so a future host change
+ * every resource: only an absolute https URL on notion.so, notion.com, or a
+ * subdomain of either qualifies (the API moved to app.notion.com in 2026). Null is the modeled "not captured", so a future host change
  * degrades to linkless copy instead of a broken link.
  */
+const NOTION_HOSTS = ['notion.so', 'notion.com'];
+
 export function parseNotionCanonicalUrl(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   let parsed: URL;
@@ -284,7 +286,7 @@ export function parseNotionCanonicalUrl(value: unknown): string | null {
     return null;
   }
   if (parsed.protocol !== 'https:') return null;
-  const isNotionHost = parsed.hostname === 'notion.so' || parsed.hostname.endsWith('.notion.so');
+  const isNotionHost = NOTION_HOSTS.some((host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`));
   return isNotionHost ? parsed.href : null;
 }
 

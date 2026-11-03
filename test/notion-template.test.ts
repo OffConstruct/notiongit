@@ -196,11 +196,14 @@ describe('Notion template ID normalization', () => {
 });
 
 describe('Notion canonical URL parsing', () => {
-  test('accepts only absolute https URLs on notion.so or a subdomain', () => {
+  test('accepts only absolute https URLs on notion.so, notion.com, or a subdomain', () => {
     expect(parseNotionCanonicalUrl(ROOT_PAGE_URL)).toBe(ROOT_PAGE_URL);
     expect(parseNotionCanonicalUrl('https://notion.so/My-Site')).toBe('https://notion.so/My-Site');
     expect(parseNotionCanonicalUrl('https://www.notion.so/workspace/Pages-11111111111141118111111111111111')).toBe(
       'https://www.notion.so/workspace/Pages-11111111111141118111111111111111',
+    );
+    expect(parseNotionCanonicalUrl('https://app.notion.com/p/Pages-11111111111141118111111111111111')).toBe(
+      'https://app.notion.com/p/Pages-11111111111141118111111111111111',
     );
   });
 
@@ -208,6 +211,7 @@ describe('Notion canonical URL parsing', () => {
     expect(parseNotionCanonicalUrl('http://notion.so/My-Site')).toBeNull();
     expect(parseNotionCanonicalUrl('https://example.com/My-Site')).toBeNull();
     expect(parseNotionCanonicalUrl('https://notion.so.evil.example/My-Site')).toBeNull();
+    expect(parseNotionCanonicalUrl('https://evilnotion.com/My-Site')).toBeNull();
     expect(parseNotionCanonicalUrl('ftp://notion.so/My-Site')).toBeNull();
     expect(parseNotionCanonicalUrl('not a url')).toBeNull();
     expect(parseNotionCanonicalUrl('')).toBeNull();
