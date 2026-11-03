@@ -16,6 +16,14 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun run test
+      - name: Install Chrome on the forge runner
+        if: github.server_url != 'https://github.com'
+        run: |
+          command -v google-chrome-stable && exit 0
+          SUDO=$(command -v sudo || true)
+          curl -fsSL -o /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          $SUDO apt-get update -q
+          $SUDO apt-get install -y -q /tmp/chrome.deb
       - run: bun run test:reflow
       - run: bun run build
       - run: git diff --check
