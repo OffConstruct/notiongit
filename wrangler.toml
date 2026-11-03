@@ -1,0 +1,139 @@
+name = "notiongit"
+main = "src/index.ts"
+compatibility_date = "2026-08-31"
+workers_dev = true
+preview_urls = true
+
+[alias]
+libsodium = "./src/libsodium-worker.ts"
+libsodium-raw = "./spikes/libsodium-workers/node_modules/libsodium/dist/modules-esm/libsodium.mjs"
+
+[vars]
+GITHUB_APP_ID = "4798518"
+GITHUB_APP_SLUG = "inkdrafts"
+# Provisioning throttle. GitHub's app-wide secondary limits are ~80
+# mutations/min and ~500/hour; provisioningThrottleConfig clamps these to
+# ceilings inside those bounds whatever an operator sets here.
+PROVISIONING_MUTATIONS_PER_MINUTE = "30"
+PROVISIONING_MUTATIONS_PER_HOUR = "240"
+PROVISIONING_LEASE_TTL_SECONDS = "1800"
+PROVISIONING_CONTROL_MODE = "active"
+PROVISIONING_PAUSED_STAGES = ""
+PROVISIONING_REJECTED_STAGES = ""
+PROVISIONING_ACCOUNT_ATTEMPT_WINDOW_SECONDS = "86400"
+PROVISIONING_ACCOUNT_ATTEMPT_LIMIT = "3"
+PROVISIONING_REQUEST_BURST_WINDOW_SECONDS = "60"
+PROVISIONING_REQUEST_BURST_LIMIT = "10"
+PROVISIONING_DENIED_IDENTITY_COOLDOWN_SECONDS = "3600"
+PROVISIONING_ADMISSION_AUDIT_TTL_SECONDS = "604800"
+
+# Alerting needs the Analytics Engine dataset, which the free tier cannot
+# deploy (owner decision 2026-09-05), so the cron trigger ships commented out
+# and `scheduled` stays wired and tested but is never invoked. The re-enable
+# recipe is in `docs/observability.md`.
+# [triggers]
+# crons = ["*/15 * * * *"]
+
+# Same live namespace as [env.production] below — this repo's top-level
+# config and env.production share the Worker name "notiongit". Local
+# development uses an isolated in-memory namespace automatically.
+[[kv_namespaces]]
+binding = "JOBS"
+id = "59f940cb5bde46e0ad0a4fe4ccba5919"
+
+# Create this queue once with `wrangler queues create notiongit-provisioning`,
+# and the dead-letter queue once with
+# `wrangler queues create notiongit-provisioning-dlq`.
+[[queues.producers]]
+binding = "PROVISIONING_QUEUE"
+queue = "notiongit-provisioning"
+
+# Each queue message advances one durable job by one step (see
+# `provisioning-queue.ts`); a step the application classifies as terminal is
+# acked immediately (the job's own record becomes its permanent record of
+# that failure), and a message whose record is not yet visible through KV's
+# eventual consistency is retried, so `max_retries`/`dead_letter_queue` here
+# are the platform's own backstop for a consumer that throws unexpectedly or
+# a job that never materializes. The batch stays at one: steps such as
+# `await_sync` poll provider APIs inline for minutes, so a larger sequential
+# batch could exceed the consumer's wall-clock limit and force redelivery of
+# every message in it.
+[[queues.consumers]]
+queue = "notiongit-provisioning"
+max_batch_size = 1
+max_batch_timeout = 0
+max_retries = 6
+dead_letter_queue = "notiongit-provisioning-dlq"
+
+# Non-production environments use separate resources and names.
+[env.staging]
+name = "notiongit-staging"
+workers_dev = true
+
+[env.staging.vars]
+GITHUB_APP_ID = "4798518"
+GITHUB_APP_SLUG = "inkdrafts"
+# Same provisioning throttle settings and clamps as the top-level [vars].
+PROVISIONING_MUTATIONS_PER_MINUTE = "30"
+PROVISIONING_MUTATIONS_PER_HOUR = "240"
+PROVISIONING_LEASE_TTL_SECONDS = "1800"
+PROVISIONING_CONTROL_MODE = "active"
+PROVISIONING_PAUSED_STAGES = ""
+PROVISIONING_REJECTED_STAGES = ""
+PROVISIONING_ACCOUNT_ATTEMPT_WINDOW_SECONDS = "86400"
+PROVISIONING_ACCOUNT_ATTEMPT_LIMIT = "3"
+PROVISIONING_REQUEST_BURST_WINDOW_SECONDS = "60"
+PROVISIONING_REQUEST_BURST_LIMIT = "10"
+PROVISIONING_DENIED_IDENTITY_COOLDOWN_SECONDS = "3600"
+PROVISIONING_ADMISSION_AUDIT_TTL_SECONDS = "604800"
+
+[[env.staging.kv_namespaces]]
+binding = "JOBS"
+id = "be672c41171a41f287dc4ff1ca32ba24"
+
+[[env.staging.queues.producers]]
+binding = "PROVISIONING_QUEUE"
+queue = "notiongit-staging-provisioning"
+
+[[env.staging.queues.consumers]]
+queue = "notiongit-staging-provisioning"
+max_batch_size = 1
+max_batch_timeout = 0
+max_retries = 6
+dead_letter_queue = "notiongit-staging-provisioning-dlq"
+
+[env.production]
+name = "notiongit"
+workers_dev = true
+
+[env.production.vars]
+GITHUB_APP_ID = "4798518"
+GITHUB_APP_SLUG = "inkdrafts"
+# Same provisioning throttle settings and clamps as the top-level [vars].
+PROVISIONING_MUTATIONS_PER_MINUTE = "30"
+PROVISIONING_MUTATIONS_PER_HOUR = "240"
+PROVISIONING_LEASE_TTL_SECONDS = "1800"
+PROVISIONING_CONTROL_MODE = "active"
+PROVISIONING_PAUSED_STAGES = ""
+PROVISIONING_REJECTED_STAGES = ""
+PROVISIONING_ACCOUNT_ATTEMPT_WINDOW_SECONDS = "86400"
+PROVISIONING_ACCOUNT_ATTEMPT_LIMIT = "3"
+PROVISIONING_REQUEST_BURST_WINDOW_SECONDS = "60"
+PROVISIONING_REQUEST_BURST_LIMIT = "10"
+PROVISIONING_DENIED_IDENTITY_COOLDOWN_SECONDS = "3600"
+PROVISIONING_ADMISSION_AUDIT_TTL_SECONDS = "604800"
+
+[[env.production.kv_namespaces]]
+binding = "JOBS"
+id = "59f940cb5bde46e0ad0a4fe4ccba5919"
+
+[[env.production.queues.producers]]
+binding = "PROVISIONING_QUEUE"
+queue = "notiongit-provisioning"
+
+[[env.production.queues.consumers]]
+queue = "notiongit-provisioning"
+max_batch_size = 1
+max_batch_timeout = 0
+max_retries = 6
+dead_letter_queue = "notiongit-provisioning-dlq"

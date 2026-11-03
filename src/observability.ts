@@ -1,0 +1,138 @@
+import type { ProvisioningFailureCode } from './failures';
+import type { ProvisioningStepError, ProvisioningStepName } from './provisioning-job';
+
+export type ProvisioningEventErrorCode = ProvisioningStepError['code'];
+
+export interface ProvisioningEventBase {
+  jobId: string;
+  /** Epoch milliseconds, from the caller's injected clock. */
+  ts: number;
+}
+
+export interface ConsentStartedEvent extends ProvisioningEventBase {
+  type: 'consent_started';
+  provider: 'notion';
+}
+
+export interface ConsentCompletedEvent extends ProvisioningEventBase {
+  type: 'consent_completed';
+  provider: 'notion';
+  templateDuplicated: boolean;
+}
+
+export interface ConsentFailedEvent extends ProvisioningEventBase {
+  type: 'consent_failed';
+  provider: 'notion';
+  /** Resolved through `callbackFailure`, so any taxonomy code can land here; the fallback is `notion_unavailable`. */
+  errorCode: ProvisioningFailureCode;
+}
+
+export interface JobQueuedEvent extends ProvisioningEventBase {
+  type: 'job_queued';
+}
+
+export interface JobEnqueueFailedEvent extends ProvisioningEventBase {
+  type: 'job_enqueue_failed';
+  errorCode: 'provisioning_enqueue_failed';
+}
+
+export interface StepStartedEvent extends ProvisioningEventBase {
+  type: 'step_started';
+  step: ProvisioningStepName;
+  attempt: number;
+}
+
+export interface StepSucceededEvent extends ProvisioningEventBase {
+  type: 'step_succeeded';
+  step: ProvisioningStepName;
+  attempt: number;
+  durationMs: number;
+}
+
+export interface StepFailedEvent extends ProvisioningEventBase {
+  type: 'step_failed';
+  step: ProvisioningStepName;
+  attempt: number;
+  errorCode: ProvisioningEventErrorCode;
+  retryable: boolean;
+  terminal: boolean;
+  durationMs: number;
+}
+
+export interface RateLimitedEvent extends ProvisioningEventBase {
+  type: 'rate_limited';
+  step: ProvisioningStepName;
+  errorCode: ProvisioningEventErrorCode;
+  retryAfterSeconds: number;
+}
+
+export interface JobSucceededEvent extends ProvisioningEventBase {
+  type: 'job_succeeded';
+  totalDurationMs: number;
+}
+
+export interface JobDeadLetteredEvent extends ProvisioningEventBase {
+  type: 'job_dead_lettered';
+  step: ProvisioningStepName;
+  errorCode: ProvisioningEventErrorCode;
+  totalDurationMs: number;
+}
+
+export interface StatusRerunDispatchedEvent {
+  type: 'status_rerun_dispatched';
+  /** Per-request random label `statusRerun` mints for the admission audit;
+   * this leg has no durable job, so this is not a `jobId`. */
+  requestLabel: string;
+  ts: number;
+}
+
+/** No variant may carry a caught `Error`, a provider body, or a user identity.
+ * `OBSERVABILITY_EVENT_FIELDS` below makes that a typecheck, not a convention. */
+export type ProvisioningEvent =
+  | ConsentStartedEvent
+  | ConsentCompletedEvent
+  | ConsentFailedEvent
+  | JobQueuedEvent
+  | JobEnqueueFailedEvent
+  | StepStartedEvent
+  | StepSucceededEvent
+  | StepFailedEvent
+  | RateLimitedEvent
+  | JobSucceededEvent
+  | JobDeadLetteredEvent
+  | StatusRerunDispatchedEvent;
+
+/** Adding a field to any variant without listing its name here fails
+ * `bun run typecheck` at `AllowlistedEventFields`. That failure is the prompt
+ * to ask whether the new field can carry free text. */
+export const OBSERVABILITY_EVENT_FIELDS = [
+  'type',
+  'jobId',
+  'requestLabel',
+  'ts',
+  'provider',
+  'templateDuplicated',
+  'errorCode',
+  'step',
+  'attempt',
+  'durationMs',
+  'retryable',
+  'terminal',
+  'retryAfterSeconds',
+  'totalDurationMs',
+] as const;
+
+type AllowedEventField = (typeof OBSERVABILITY_EVENT_FIELDS)[number];
+
+type EventFieldName = ProvisioningEvent extends infer Variant
+  ? Variant extends object ? keyof Variant : never
+  : never;
+
+type AllowlistedEventFields<Field extends AllowedEventField> = Field;
+
+type _EveryEventFieldIsAllowlisted = AllowlistedEventFields<EventFieldName>;
+
+/** Record one funnel event as a structured log line for Workers Logs. */
+export function emitProvisioningEvent(event: ProvisioningEvent): void {
+  console.log(JSON.stringify(event));
+}

@@ -1,0 +1,518 @@
+/**
+ * Notion public-connection OAuth.
+ *
+ * OAuth state is signed and replay-tracked in KV, but contains no credential
+ * or workspace data. The token returned by Notion is handed directly to the
+ * request-local continuation and is never persisted, queued, logged, or
+ * returned to the browser.
+ */
+
+import { emitProvisioningEvent } from './observability';
+import type { GithubActionsSecretsErrorCode } from './actions-secrets';
+import type { NotionTemplateErrorCode } from './notion-template';
+import { callbackFailure, codedFailureCode, type ProvisioningFailureCode } from './failures';
+import { errorPageResponse, restartHrefFor } from './error-page';
+import { progressPageUrl } from './progress';
+import { Secret } from './secret';
+import { redactValue, reportError } from './safe-serialize';
+import {
+  admitProvisioningCallback,
+  admitProvisioningStage,
+  admissionFailureCode,
+  provisioningAdmissionConfig,
+  type ProvisioningThrottleVars,
+} from './provisioning-throttle';
+
+export const NOTION_AUTHORIZATION_URL = 'https://api.notion.com/v1/oauth/authorize';
+export const NOTION_TOKEN_URL = 'https://api.notion.com/v1/oauth/token';
+export const NOTION_API_VERSION = '2022-06-28';
+// Matched to the GitHub install state: the Notion authorize leg is also a
+// human-paced journey and may include creating the Notion account itself.
+export const NOTION_STATE_TTL_SECONDS = 60 * 60;
+export const NOTION_STATE_REPLAY_TTL_SECONDS = 60 * 60;
+export const NOTION_STATE_PREFIX = 'notion:oauth-state:';
+export const NOTION_STATE_COOKIE = '__Host-notion-oauth-state';
+
+const JSON_HEADERS = {
+  'content-type': 'application/json; charset=utf-8',
+  'cache-control': 'no-store',
+};
+
+export interface NotionOAuthEnv extends ProvisioningThrottleVars {
+  JOBS: KVNamespace;
+  NOTION_CLIENT_ID: string;
+  NOTION_CLIENT_SECRET: string;
+}
+
+export interface NotionStatePayload {
+  v: 1;
+  jobId: string;
+  nonce: string;
+  exp: number;
+}
+
+interface NotionStateRecord {
+  version: 1;
+  jobId: string;
+  nonce: string;
+  expiresAt: number;
+  phase: 'pending' | 'consumed';
+}
+
+interface NotionTokenResponse {
+  access_token?: unknown;
+  token_type?: unknown;
+  refresh_token?: unknown;
+  bot_id?: unknown;
+  workspace_id?: unknown;
+  duplicated_template_id?: unknown;
+}
+
+/** The only data permitted to leave the callback's request-local scope. */
+export interface NotionOAuthContinuation {
+  readonly jobId: string;
+  readonly accessToken: Secret<'notion-user-access'>;
+  readonly duplicatedTemplateId: string | null;
+}
+
+export type NotionOAuthContinuationHandler = (continuation: NotionOAuthContinuation) =>
+  | Promise<Record<string, unknown> | void>
+  | Record<string, unknown>
+  | void;
+
+export interface NotionOAuthRouteOptions {
+  /**
+   * Consumes the short-lived token and duplicated root immediately. The
+   * production handler (`continueNotionOnboarding` in `index.ts`) resolves
+   * the duplicated template into database IDs, writes the repository's
+   * Actions secrets, and hands the job to the provisioning queue; tests
+   * inject their own. Its return value is deliberately ignored — the browser
+   * continues on the progress page, so nothing is merged into a success body.
+   */
+  continueOnboarding?: NotionOAuthContinuationHandler;
+  /** Injectable provider transport for tests and local development. */
+  fetcher?: typeof fetch;
+}
+
+export type NotionOAuthErrorCode =
+  | 'notion_configuration_missing'
+  | 'notion_state_missing'
+  | 'notion_state_invalid'
+  | 'notion_state_expired'
+  | 'notion_state_replayed'
+  | 'notion_authorization_denied'
+  | 'notion_code_missing'
+  | 'notion_authorization_failed'
+  | 'notion_rate_limited'
+  | 'notion_unavailable'
+  | 'notion_token_invalid'
+  // No provisioning job exists for this `jobId`: the browser reached Notion
+  // authorization without finishing (or long after) GitHub authorization.
+  | 'provisioning_job_missing'
+  // The secrets are written but the queue would not accept the job. Distinct
+  // because the recovery is to re-authorize Notion for the same job, which
+  // then skips straight to the handoff.
+  | 'provisioning_handoff_failed'
+  | 'provisioning_paused'
+  | 'provisioning_rejected'
+  | 'provisioning_control_invalid'
+  | 'github_request_burst_limited'
+  | 'github_account_attempt_limited'
+  | 'github_identity_temporarily_denied'
+  // The onboarding continuation (the database resolver wired in issue #7 and
+  // the Actions secret write) reports through the same error channel;
+  // `details` may add non-secret schema metadata to the response body.
+  | NotionTemplateErrorCode
+  | GithubActionsSecretsErrorCode;
+
+export class NotionOAuthError extends Error {
+  readonly code: NotionOAuthErrorCode;
+  readonly status: number;
+  readonly details: Record<string, unknown> | null;
+
+  constructor(code: NotionOAuthErrorCode, status: number, details: Record<string, unknown> | null = null) {
+    super(code);
+    this.name = 'NotionOAuthError';
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+}
+
+const textEncoder = new TextEncoder();
+
+function base64UrlEncode(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/u, '');
+}
+
+function base64UrlDecode(value: string): Uint8Array {
+  if (!/^[A-Za-z0-9_-]+$/u.test(value)) throw new Error('invalid base64url');
+  const padded = value.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat((4 - (value.length % 4)) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+function base64EncodeUtf8(value: string): string {
+  let binary = '';
+  for (const byte of textEncoder.encode(value)) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+async function hmacSign(value: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    textEncoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(value));
+  return base64UrlEncode(new Uint8Array(signature));
+}
+
+export async function signNotionState(payload: NotionStatePayload, secret: string): Promise<string> {
+  const encodedPayload = base64UrlEncode(textEncoder.encode(JSON.stringify(payload)));
+  return `${encodedPayload}.${await hmacSign(encodedPayload, secret)}`;
+}
+
+async function verifyNotionState(encodedState: string, secret: string): Promise<NotionStatePayload | null> {
+  const parts = encodedState.split('.');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+
+  try {
+    const key = await crypto.subtle.importKey(
+      'raw',
+      textEncoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify'],
+    );
+    if (!await crypto.subtle.verify(
+      'HMAC',
+      key,
+      base64UrlDecode(parts[1]),
+      textEncoder.encode(parts[0]),
+    )) return null;
+
+    const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[0]))) as NotionStatePayload;
+    if (
+      payload.v !== 1 ||
+      typeof payload.jobId !== 'string' ||
+      typeof payload.nonce !== 'string' ||
+      !/^[A-Za-z0-9_-]{1,128}$/u.test(payload.jobId) ||
+      !/^[A-Za-z0-9-]{20,100}$/u.test(payload.nonce) ||
+      !Number.isSafeInteger(payload.exp)
+    ) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function stateKey(nonce: string): string {
+  return `${NOTION_STATE_PREFIX}${nonce}`;
+}
+
+function validJobId(value: string): boolean {
+  return /^[A-Za-z0-9_-]{1,128}$/u.test(value);
+}
+
+function callbackUrl(request: Request): string {
+  return new URL('/auth/notion/callback', request.url).toString();
+}
+
+function notionRedirectCookie(nonce: string): string {
+  return `${NOTION_STATE_COOKIE}=${encodeURIComponent(nonce)}; Max-Age=${NOTION_STATE_TTL_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function clearRedirectCookie(): string {
+  return `${NOTION_STATE_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function cookieValue(request: Request, name: string): string | null {
+  const header = request.headers.get('Cookie');
+  if (!header) return null;
+  for (const part of header.split(';')) {
+    const [key, ...value] = part.trim().split('=');
+    if (key === name) {
+      try {
+        return decodeURIComponent(value.join('='));
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+function notionFailureResponse(failure: {
+  code: ProvisioningFailureCode;
+  status: number;
+  retryAfterSeconds: number | null;
+  details?: Record<string, unknown> | null;
+  /** Overrides the registry-derived target; null means no button at all. */
+  restartHref?: string | null;
+}, extraHeaders: Record<string, string> = {}): Response {
+  const base = restartHrefFor(failure.code, '/connect/github');
+  return errorPageResponse({
+    ...failure,
+    restartHref: failure.restartHref !== undefined ? failure.restartHref : base,
+  }, extraHeaders);
+}
+
+async function readJson<T>(result: Response): Promise<T | null> {
+  try {
+    return await result.json() as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Begin Notion public-connection authorization for a job. */
+export async function beginNotionAuthorization(
+  request: Request,
+  env: Partial<NotionOAuthEnv>,
+): Promise<Response> {
+  if (!env.JOBS || !env.NOTION_CLIENT_ID || !env.NOTION_CLIENT_SECRET) {
+    return notionFailureResponse({ code: 'notion_configuration_missing', status: 500, retryAfterSeconds: null });
+  }
+
+  const url = new URL(request.url);
+  const requestedJobId = url.searchParams.get('job_id') || url.searchParams.get('jobId');
+  const jobId = requestedJobId || crypto.randomUUID();
+  if (!validJobId(jobId)) return notionFailureResponse({ code: 'invalid_job_id', status: 400, retryAfterSeconds: null });
+  emitProvisioningEvent({ type: 'consent_started', jobId, ts: Date.now(), provider: 'notion' });
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload: NotionStatePayload = {
+    v: 1,
+    jobId,
+    nonce: crypto.randomUUID(),
+    exp: now + NOTION_STATE_TTL_SECONDS,
+  };
+  const state = await signNotionState(payload, env.NOTION_CLIENT_SECRET);
+  const record: NotionStateRecord = {
+    version: 1,
+    jobId,
+    nonce: payload.nonce,
+    expiresAt: payload.exp,
+    phase: 'pending',
+  };
+  await env.JOBS.put(stateKey(payload.nonce), JSON.stringify(record), {
+    expirationTtl: NOTION_STATE_TTL_SECONDS,
+  });
+
+  const authorizationUrl = new URL(NOTION_AUTHORIZATION_URL);
+  authorizationUrl.searchParams.set('owner', 'user');
+  authorizationUrl.searchParams.set('client_id', env.NOTION_CLIENT_ID);
+  authorizationUrl.searchParams.set('redirect_uri', callbackUrl(request));
+  authorizationUrl.searchParams.set('response_type', 'code');
+  authorizationUrl.searchParams.set('state', state);
+
+  const headers = new Headers({ Location: authorizationUrl.toString(), ...JSON_HEADERS });
+  headers.set('Set-Cookie', notionRedirectCookie(payload.nonce));
+  return new Response(null, { status: 302, headers });
+}
+
+async function exchangeNotionCode(
+  code: string,
+  redirectUri: string,
+  env: Pick<NotionOAuthEnv, 'NOTION_CLIENT_ID' | 'NOTION_CLIENT_SECRET'>,
+  fetcher: typeof fetch = fetch,
+): Promise<NotionOAuthContinuation> {
+  let result: Response;
+  try {
+    result = await fetcher(NOTION_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'Notion-Version': NOTION_API_VERSION,
+        Authorization: `Basic ${base64EncodeUtf8(`${env.NOTION_CLIENT_ID}:${env.NOTION_CLIENT_SECRET}`)}`,
+      },
+      body: JSON.stringify({ grant_type: 'authorization_code', code, redirect_uri: redirectUri }),
+    });
+  } catch {
+    throw new NotionOAuthError('notion_unavailable', 502);
+  }
+
+  const token = await readJson<NotionTokenResponse>(result);
+  if (result.status === 429) throw new NotionOAuthError('notion_rate_limited', 429);
+  if (!result.ok) {
+    if (result.status === 400 || result.status === 401) {
+      throw new NotionOAuthError('notion_authorization_failed', 400);
+    }
+    throw new NotionOAuthError('notion_unavailable', 502);
+  }
+  if (
+    !token ||
+    typeof token.access_token !== 'string' || !token.access_token ||
+    token.token_type !== 'bearer' ||
+    typeof token.bot_id !== 'string' || !token.bot_id ||
+    typeof token.workspace_id !== 'string' || !token.workspace_id ||
+    (token.duplicated_template_id !== undefined &&
+      token.duplicated_template_id !== null &&
+      (typeof token.duplicated_template_id !== 'string' || !token.duplicated_template_id))
+  ) {
+    throw new NotionOAuthError('notion_token_invalid', 502);
+  }
+
+  return {
+    jobId: '',
+    accessToken: Secret.notionUserAccess(token.access_token),
+    duplicatedTemplateId: typeof token.duplicated_template_id === 'string'
+      ? token.duplicated_template_id
+      : null,
+  };
+}
+
+/** Exchange a Notion code without exposing the provider's raw response. */
+export async function exchangeNotionAuthorizationCode(
+  code: string,
+  redirectUri: string,
+  env: Pick<NotionOAuthEnv, 'NOTION_CLIENT_ID' | 'NOTION_CLIENT_SECRET'>,
+  fetcher: typeof fetch = fetch,
+): Promise<Omit<NotionOAuthContinuation, 'jobId'>> {
+  const continuation = await exchangeNotionCode(code, redirectUri, env, fetcher);
+  return { accessToken: continuation.accessToken, duplicatedTemplateId: continuation.duplicatedTemplateId };
+}
+
+/** Handle Notion's redirect and hand credentials only to the local continuation. */
+export async function finishNotionCallback(
+  request: Request,
+  env: Partial<NotionOAuthEnv>,
+  options: NotionOAuthRouteOptions = {},
+): Promise<Response> {
+  const clearCookieHeaders = { 'Set-Cookie': clearRedirectCookie() };
+  if (!env.JOBS || !env.NOTION_CLIENT_ID || !env.NOTION_CLIENT_SECRET) {
+    return notionFailureResponse({ code: 'notion_configuration_missing', status: 500, retryAfterSeconds: null }, clearCookieHeaders);
+  }
+
+  const url = new URL(request.url);
+  const encodedState = url.searchParams.get('state');
+  if (!encodedState) return notionFailureResponse({ code: 'notion_state_missing', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+  const payload = await verifyNotionState(encodedState, env.NOTION_CLIENT_SECRET);
+  if (!payload) return notionFailureResponse({ code: 'notion_state_invalid', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+  if (payload.exp <= Math.floor(Date.now() / 1000)) {
+    return notionFailureResponse({ code: 'notion_state_expired', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+  }
+
+  if (cookieValue(request, NOTION_STATE_COOKIE) !== payload.nonce) {
+    return notionFailureResponse({ code: 'notion_state_invalid', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+  }
+
+  const record = await env.JOBS.get<NotionStateRecord>(stateKey(payload.nonce), 'json');
+  if (!record || record.version !== 1 || record.jobId !== payload.jobId || record.nonce !== payload.nonce) {
+    return notionFailureResponse({ code: 'notion_state_invalid', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+  }
+  if (record.phase === 'consumed') return notionFailureResponse({ code: 'notion_state_replayed', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+  if (record.expiresAt <= Math.floor(Date.now() / 1000)) {
+    return notionFailureResponse({ code: 'notion_state_expired', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+  }
+
+  const admissionConfig = provisioningAdmissionConfig(env);
+  const control = await admitProvisioningStage(env as NotionOAuthEnv, admissionConfig, {
+    stage: 'notion_callback',
+    jobId: payload.jobId,
+  }, Date.now());
+  if (control.action !== 'allow') {
+    const status = control.reason === 'callback_replay' ? 400
+      : control.reason === 'request_burst' || control.reason === 'account_attempt_limit' ? 429
+        : control.reason === 'identity_denied' ? 423 : 503;
+    return notionFailureResponse({
+      code: admissionFailureCode(control.reason),
+      status,
+      retryAfterSeconds: control.retryAfterSeconds,
+    }, clearCookieHeaders);
+  }
+  const replay = await admitProvisioningCallback(env as NotionOAuthEnv, admissionConfig, {
+    provider: 'notion',
+    phase: 'oauth',
+    nonce: payload.nonce,
+    stage: 'notion_callback',
+    jobId: payload.jobId,
+  }, Date.now());
+  if (replay.action !== 'allow') return notionFailureResponse({ code: admissionFailureCode(replay.reason, 'notion'), status: 400, retryAfterSeconds: replay.retryAfterSeconds }, clearCookieHeaders);
+
+  // Claiming the callback above closes the replay race. Consume the signed
+  // state before the provider call because the authorization code is single-use.
+  await env.JOBS.put(stateKey(payload.nonce), JSON.stringify({ ...record, phase: 'consumed' }), {
+    expirationTtl: NOTION_STATE_REPLAY_TTL_SECONDS,
+  });
+
+  if (url.searchParams.has('error')) {
+    return notionFailureResponse({ code: 'notion_authorization_denied', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+  }
+  const code = url.searchParams.get('code');
+  if (!code) return notionFailureResponse({ code: 'notion_code_missing', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+
+  try {
+    const exchanged = await exchangeNotionCode(
+      code,
+      callbackUrl(request),
+      env as Pick<NotionOAuthEnv, 'NOTION_CLIENT_ID' | 'NOTION_CLIENT_SECRET'>,
+      options.fetcher,
+    );
+    const continuation: NotionOAuthContinuation = {
+      jobId: payload.jobId,
+      accessToken: exchanged.accessToken,
+      duplicatedTemplateId: exchanged.duplicatedTemplateId,
+    };
+    await options.continueOnboarding?.(continuation);
+
+    emitProvisioningEvent({
+      type: 'consent_completed',
+      jobId: payload.jobId,
+      ts: Date.now(),
+      provider: 'notion',
+      templateDuplicated: continuation.duplicatedTemplateId !== null,
+    });
+
+    // The browser must never sit on this single-use callback URL: the 303
+    // makes refresh, back, and forward re-request the progress page instead
+    // of replaying a consumed callback.
+    return new Response(null, {
+      status: 303,
+      headers: {
+        Location: new URL(progressPageUrl(payload.jobId), request.url).toString(),
+        ...clearCookieHeaders,
+      },
+    });
+  } catch (error) {
+    const failure = callbackFailure(error, 'notion');
+    emitProvisioningEvent({
+      type: 'consent_failed',
+      jobId: payload.jobId,
+      ts: Date.now(),
+      provider: 'notion',
+      errorCode: failure.code,
+    });
+    // A handoff failure is not a dead end: the secrets are durable and the
+    // job is live, so the awaiting-Notion panel and its Connect-Notion link
+    // are the taxonomy's prescribed recovery.
+    if (failure.code === 'provisioning_handoff_failed') {
+      return new Response(null, {
+        status: 303,
+        headers: {
+          Location: new URL(progressPageUrl(payload.jobId), request.url).toString(),
+          ...clearCookieHeaders,
+        },
+      });
+    }
+    // Only non-secret schema metadata the continuation attached on purpose,
+    // redacted on the way out so a future details field cannot smuggle a
+    // credential into the browser.
+    const details = failure.details ? redactValue(failure.details) as Record<string, unknown> : null;
+    const connectUrl = typeof details?.connect_url === 'string' ? details.connect_url : '/connect/github';
+    if (codedFailureCode(error) === null) reportError('notion_callback_failed', error);
+    return notionFailureResponse({
+      code: failure.code,
+      status: failure.status,
+      retryAfterSeconds: failure.retryAfterSeconds,
+      details,
+      restartHref: restartHrefFor(failure.code, connectUrl),
+    }, clearCookieHeaders);
+  }
+}
