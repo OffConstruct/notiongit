@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { Script } from 'node:vm';
 
 import { createProvisioningJob, PROVISIONING_STEP_ORDER, type ProvisioningJob } from '../src/provisioning-job';
 import type { ProvisioningFailureCode } from '../src/failures';
@@ -158,7 +159,7 @@ describe('progress page', () => {
     expect(page).not.toContain('innerHTML');
     expect(page).not.toContain('document.write');
     const script = page.slice(page.lastIndexOf('<script>') + '<script>'.length).split('</script>')[0];
-    expect(() => new Function(script)).not.toThrow();
+    expect(() => new Script(script)).not.toThrow();
   });
 
   test('makes no request outside the origin', () => {

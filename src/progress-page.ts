@@ -202,7 +202,9 @@ const HEADLINES_JSON = scriptJson(Object.fromEntries(
 const CHECK_OK_COPY = 'Checked just now: your site is answering.';
 const CHECK_NOT_YET_COPY = 'Checked just now: not answering yet. Try again in a minute.';
 
-const SCRIPT = `
+// The early returns below need a function scope: a classic script rejects a
+// top-level return and runs nothing at all.
+const SCRIPT = `(() => {
   const HEADINGS = ${scriptJson(PAGE_HEADINGS)};
   const HEADLINES = ${HEADLINES_JSON};
   const STATE_WORDS = ${scriptJson(STATE_WORDS)};
@@ -358,6 +360,7 @@ const SCRIPT = `
     if (event.persisted) poll();
   });
   schedule();
+})();
 `;
 
 function checklistRow(stage: ProgressStageView): string {
