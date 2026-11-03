@@ -370,11 +370,15 @@ function checklistRow(stage: ProgressStageView): string {
     `</li>`;
 }
 
-/** Shown where a captured link would have been; null never renders an anchor. */
+/** Shown where a captured link would have been. */
 const NOTION_LINK_FALLBACK = 'We could not capture a link here. You can find this page in your Notion workspace.';
 
 function notionLinkRow(name: string, url: string | null, id: string): string {
-  const link = url === null ? '' : `<a id="${id}" href="${escapeHtml(url)}">Open in Notion</a>`;
+  // A null URL still renders the anchor, hidden and without an href, so a
+  // later poll has an element to fill in.
+  const link = url === null
+    ? `<a id="${id}" hidden>Open in Notion</a>`
+    : `<a id="${id}" href="${escapeHtml(url)}">Open in Notion</a>`;
   const missing =
     `<span id="${id}-missing" class="notion-missing"${url === null ? '' : ' hidden'}>${escapeHtml(NOTION_LINK_FALLBACK)}</span>`;
   return `<li><span class="link-name">${escapeHtml(name)}</span>${link}${missing}</li>`;

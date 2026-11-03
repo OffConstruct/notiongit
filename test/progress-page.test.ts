@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { Script } from 'node:vm';
+import { JSDOM } from 'jsdom';
 
 import { createProvisioningJob, PROVISIONING_STEP_ORDER, type ProvisioningJob } from '../src/provisioning-job';
 import type { ProvisioningFailureCode } from '../src/failures';
@@ -213,7 +214,7 @@ describe('progress page', () => {
   test('a null Notion link renders linkless fallback copy and never an empty href', () => {
     const page = progressPage('job-123', SUCCEEDED);
     for (const id of ['notion-root-link', 'notion-pages-link', 'notion-posts-link']) {
-      expect(page).not.toContain(`<a id="${id}"`);
+      expect(page).toContain(`<a id="${id}" hidden>Open in Notion</a>`);
       expect(page).toContain(`id="${id}-missing" class="notion-missing">`);
     }
     expect(page).toContain('We could not capture a link here. You can find this page in your Notion workspace.');
@@ -346,5 +347,35 @@ describe('progress page', () => {
   test('the document title starts as the headline while active and the heading when done', () => {
     expect(progressPage('job-123', ACTIVE)).toContain('<title>Preparing your site settings.</title>');
     expect(progressPage('job-123', SUCCEEDED)).toContain('<title>Your site is live</title>');
+  });
+});
+
+describe('progress page in a browser', () => {
+  test('a poll that sees success renders the live panel with its captured Notion links', async () => {
+    const timers: (() => void)[] = [];
+    const next = { ...SUCCEEDED_LINKS, updatedAt: ACTIVE.updatedAt + 1 };
+    const page = progressPage('job-123', ACTIVE);
+    const { window } = new JSDOM(page, { runScripts: 'outside-only', pretendToBeVisual: true });
+    window.setTimeout = ((callback: () => void) => timers.push(callback)) as unknown as typeof window.setTimeout;
+    window.fetch = (async () => ({ ok: true, json: async () => next })) as unknown as typeof window.fetch;
+    window.eval(page.slice(page.lastIndexOf('<script>') + '<script>'.length).split('</script>')[0]!);
+    const document = window.document;
+    expect(timers).toHaveLength(1);
+    timers[0]!();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.getElementById('progress-heading')?.textContent).toBe('Your site is live');
+    expect(document.getElementById('site-link')?.getAttribute('href')).toBe('https://alice.github.io');
+    for (const [id, url] of [
+      ['notion-root-link', NOTION_LINKS.templateRootUrl],
+      ['notion-pages-link', NOTION_LINKS.pagesUrl],
+      ['notion-posts-link', NOTION_LINKS.postsUrl],
+    ] as const) {
+      const link = document.getElementById(id) as HTMLAnchorElement | null;
+      expect(link?.getAttribute('href')).toBe(url);
+      expect(link?.hidden).toBe(false);
+      expect((document.getElementById(`${id}-missing`) as HTMLElement | null)?.hidden).toBe(true);
+    }
+    window.close();
   });
 });
