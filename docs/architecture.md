@@ -29,12 +29,12 @@ like the App ID below; never commit an API token), workers.dev subdomain
 Each has served `GET /healthz` successfully. Local development uses
 Wrangler's local binding emulators instead of these live resources.
 
-The manual Deploy GitHub Action workflow additionally needs
-`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets, which
-are **not yet set** — set them with `gh secret set` (never paste the token
-into a commit, issue, or chat) before relying on that workflow; deploying
-locally with an authenticated `wrangler` CLI, as done here, does not need
-them.
+The manual Deploy workflow runs on the forge, where the repository's Actions
+secrets `CLOUDFLARE_API_TOKEN` (a `notiongit-deploy` Workers token) and
+`CLOUDFLARE_ACCOUNT_ID` are set. Dispatch it from the forge's Actions tab, or
+with `POST /api/v1/repos/OffConstruct/notiongit/actions/workflows/deploy.yml/dispatches`
+and `{"ref":"main","inputs":{"environment":"staging"}}`. Never paste the token
+into a commit, issue, or chat.
 
 Set secrets with Wrangler; values are never committed or placed in browser code:
 
