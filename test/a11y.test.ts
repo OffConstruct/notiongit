@@ -11,6 +11,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { JSDOM, VirtualConsole } from 'jsdom';
 
 import type { ProvisioningFailureCode } from '../src/failures';
@@ -19,8 +20,10 @@ import { POLICY_PAGES, POLICY_PATHS } from '../src/policy-pages';
 import { createProvisioningJob, PROVISIONING_STEP_ORDER, type ProvisioningJob } from '../src/provisioning-job';
 import { progressPage, type SiteCheckOutcome } from '../src/progress-page';
 import { projectProvisioning, type ProgressSnapshot } from '../src/progress';
+import { THEMES } from '../src/theme-catalog';
 import { statusPage, statusRefusalPage, type StatusPageChrome, type StatusPageModel } from '../src/status-page';
 import type { DeployOutcome, SiteStatus, SyncOutcome } from '../src/status';
+import { themePageStates } from './fixtures/theme-pages';
 
 const axeSource = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 
@@ -97,6 +100,20 @@ describe('accessibility suite', () => {
     await expectAccessible('landing', LANDING_PAGE);
   });
 
+  test('landing page with the customizer enhanced by landing.js has no serious or critical violations', async () => {
+    const { window } = new JSDOM(LANDING_PAGE, { url: 'https://inkdrafts.test/', runScripts: 'outside-only', virtualConsole: silentConsole });
+    window.eval(readFileSync(join(import.meta.dir, '..', 'public', 'assets', 'landing.js'), 'utf8'));
+    for (const theme of THEMES) {
+      const pick = window.document.getElementById('theme-pick') as HTMLSelectElement;
+      pick.value = theme.id;
+      pick.dispatchEvent(new window.Event('change', { bubbles: true }));
+      const more = window.document.querySelector('details.more-options') as HTMLDetailsElement | null;
+      if (more) more.open = true;
+      await expectAccessible(`landing+${theme.id}`, `<!doctype html>${window.document.documentElement.outerHTML}`);
+    }
+    window.close();
+  }, 180_000);
+
   test('every progress state has no serious or critical violations', async () => {
     for (const [label, documentHtml] of Object.entries(progressStates())) {
       await expectAccessible(`progress/${label}`, documentHtml);
@@ -106,6 +123,12 @@ describe('accessibility suite', () => {
   test('every status state has no serious or critical violations', async () => {
     for (const [label, documentHtml] of Object.entries(statusStates())) {
       await expectAccessible(`status/${label}`, documentHtml);
+    }
+  });
+
+  test('every theme gallery, detail and customize state has no serious or critical violations', async () => {
+    for (const [label, documentHtml] of Object.entries(themePageStates())) {
+      await expectAccessible(label, documentHtml);
     }
   });
 

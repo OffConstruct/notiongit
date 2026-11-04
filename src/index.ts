@@ -76,13 +76,18 @@ import {
   resolveNotionTemplateDatabases,
   saveNotionTemplateResolution,
 } from './notion-template';
-import { LANDING_PAGE } from './landing-page';
+import { LANDING_PAGE, LANDING_PAGE_HEADERS } from './landing-page';
 import { POLICY_PAGES } from './policy-pages';
 import { progressPageUrl, projectProvisioning } from './progress';
 import { progressPage, type SiteCheckOutcome } from './progress-page';
 import { checkPublicSiteReachable } from './site-deployment';
 import { isStatusCallbackState, statusCallback, statusHome, statusRerun } from './status';
 import { reportError } from './safe-serialize';
+import { parseAppearanceParams, parseStoredAppearance, type SiteAppearance } from './theme-catalog';
+import { previewMissPage, themeDetailResponse, themesGalleryResponse } from './themes-page';
+import { previewRenderResponse } from './preview-render';
+import { appearanceHome, appearanceSave } from './appearance';
+import { pageHeaders, previewFallbackHeaders } from './http-headers';
 export {
   createRepositoryWithRetry,
   GithubRepositoryApiError,
@@ -460,6 +465,8 @@ export interface Env extends ProvisioningThrottleVars {
   GITHUB_CLIENT_SECRET: string;
   NOTION_CLIENT_ID: string;
   NOTION_CLIENT_SECRET: string;
+  /** The static assets in `public/`, for the server-rendered theme preview. */
+  ASSETS?: Fetcher;
 }
 
 export interface ProvisioningMessage {
@@ -539,6 +546,9 @@ interface GithubStateRecord {
   phase: StatePhase;
   installationId?: number;
   identity?: GithubIdentity;
+  /** The theme chosen on the way in. Held server-side only: it never rides
+   * the signed state that GitHub sees. Absent means no choice was made. */
+  appearance?: SiteAppearance;
 }
 
 /** Exported for tests and for other onboarding entrypoints that share state. */
@@ -646,6 +656,15 @@ async function beginGithubInstall(request: Request, env: Partial<Env>): Promise<
   const requestedJobId = url.searchParams.get('job_id') || url.searchParams.get('jobId');
   const jobId = requestedJobId || crypto.randomUUID();
   if (!validJobId(jobId)) return failureResponse({ code: 'invalid_job_id', status: 400, retryAfterSeconds: null });
+  const appearance = parseAppearanceParams(url.searchParams);
+  if (appearance.kind === 'unknown_theme' || appearance.kind === 'oversize') {
+    return errorPageResponse({
+      code: appearance.kind === 'unknown_theme' ? 'theme_unknown' : 'theme_request_invalid',
+      status: 400,
+      retryAfterSeconds: null,
+      restartHref: '/themes',
+    });
+  }
   const admission = await admitProvisioningRequest(env as Env, provisioningAdmissionConfig(env), {
     request,
     jobId,
@@ -667,6 +686,7 @@ async function beginGithubInstall(request: Request, env: Partial<Env>): Promise<
     nonce: payload.nonce,
     expiresAt: payload.exp,
     phase: 'pending',
+    ...(appearance.kind === 'ok' ? { appearance: appearance.appearance } : {}),
   };
   await env.JOBS.put(stateKey(payload.nonce), JSON.stringify(record), { expirationTtl: STATE_TTL_SECONDS });
 
@@ -829,12 +849,17 @@ async function finishGithubCallback(request: Request, env: Partial<Env>): Promis
         // and survives this Worker restarting mid-pipeline. The queue is not
         // told about the job here: the Notion callback enqueues it once the
         // repository's Actions secrets exist (see `continueNotionOnboarding`).
+        // A re-entry with the same job_id and no theme keeps the earlier
+        // choice; a new theme replaces it.
+        const appearance = parseStoredAppearance(record.appearance) ??
+          (await loadProvisioningJob(env.JOBS, record.jobId))?.data.appearance ?? null;
         const job = createProvisioningJob({
           jobId: record.jobId,
           installationId: selectedInstallationId,
           identity,
           repository,
           generatedRepository,
+          appearance,
           now: Date.now(),
         });
         await saveProvisioningJob(env.JOBS, job);
@@ -1078,7 +1103,7 @@ export function route(
   }
 
   if (request.method === 'GET' && url.pathname === '/') {
-    return html(LANDING_PAGE);
+    return new Response(LANDING_PAGE, { headers: pageHeaders(LANDING_PAGE_HEADERS) });
   }
 
   if (request.method === 'GET' && url.pathname === '/healthz') {
@@ -1116,6 +1141,35 @@ export function route(
 
   if (request.method === 'POST' && url.pathname === '/status/rerun') {
     return statusRerun(request, env);
+  }
+
+  if (request.method === 'GET' && url.pathname === '/status/appearance') {
+    return appearanceHome(request, env);
+  }
+
+  if (request.method === 'POST' && url.pathname === '/status/appearance') {
+    return appearanceSave(request, env);
+  }
+
+  if (request.method === 'GET' && (url.pathname === '/themes' || url.pathname === '/themes/')) {
+    return themesGalleryResponse(request);
+  }
+
+  const themeDetail = url.pathname.match(/^\/themes\/([a-z]{2,24})\/?$/u);
+  if (request.method === 'GET' && themeDetail) {
+    return themeDetailResponse(request, themeDetail[1]);
+  }
+
+  const previewRender = url.pathname.match(/^\/preview\/([a-z]{2,24})\/$/u);
+  if (request.method === 'GET' && previewRender) {
+    return previewRenderResponse(request, previewRender[1], env.ASSETS);
+  }
+
+  // Static assets answer every exported preview page before the Worker runs,
+  // so a preview path that reaches here is a link outside the exported set.
+  const previewMiss = url.pathname.match(/^\/previews\/([a-z]{2,24})\//u);
+  if (request.method === 'GET' && previewMiss) {
+    return new Response(previewMissPage(previewMiss[1]), { status: 404, headers: previewFallbackHeaders() });
   }
 
   if (request.method === 'GET' && url.pathname === '/auth/github/callback') {

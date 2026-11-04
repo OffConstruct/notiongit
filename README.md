@@ -24,12 +24,20 @@ the hosting decision is recorded in
 
 The Worker entrypoint is [`src/index.ts`](src/index.ts). `GET /` serves the
 public landing page ([`src/landing-page.ts`](src/landing-page.ts)): a
-self-contained, server-rendered document with no client JavaScript and no
-external requests (fonts, scripts, or images), so its core content and the
-single `/connect/github` call to action work with JavaScript disabled. It
+server-rendered document, built from the theme catalog, that loads only
+same-origin files (one font, the theme thumbnails, and one deferred script,
+`public/assets/landing.js`). Its core content works with JavaScript disabled:
+the single `/connect/github` call to action, a theme gallery whose category
+filter is CSS over radio buttons, and a "Make it yours" form that submits the
+chosen theme and color scheme to `/connect/github`. The script is progressive
+enhancement: it swaps the live preview iframe (`/previews/<id>/`) as the
+visitor picks a theme and adds that theme's accent and other options, which
+the form then carries into signup. The only third-party requests come from a
+theme preview loading its own web fonts inside the iframe. The page also
 explains what InkDrafts creates, owns, and costs; the real three-stage
-onboarding flow and why each provider's permissions are requested; and
-privacy/security notes and links to the three public repositories. It
+onboarding flow and why each provider's permissions are requested;
+privacy/security notes; and links to the three public repositories and the
+theme authoring guide. It
 deliberately never links the App install page directly — the GitHub App stays
 unadvertised from inkdrafts.com until the M5 launch issue
 (see [`docs/github-app-runbook.md`](docs/github-app-runbook.md)). It also

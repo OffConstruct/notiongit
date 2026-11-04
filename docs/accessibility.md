@@ -9,23 +9,29 @@ and small-screen failures are treated as product blockers (issue #24).
 
 | Route | Module | States |
 | --- | --- | --- |
-| `GET /` | `src/landing-page.ts` | one static document |
+| `GET /` | `src/landing-page.ts` | the static document, the same with `landing.js` showing each theme's options, and with scripts off |
+| `GET /themes`, `GET /themes/<id>` | `src/themes-page.ts` | gallery (all, one category), detail (defaults, custom tweaks) |
+| `GET /status/appearance` | `src/appearance-page.ts` | editor (current, switching, saved, error), site that predates themes |
 | `GET /progress` | `src/progress-page.ts` | `awaiting_notion`, `active` (with and without notice), `succeeded` (links, checked, not-up-yet, links-missing), `failed` (restart and support recovery), `missing` |
 | `GET /status` | `src/status-page.ts` | `entry`, `session` (sync and publish outcome combinations, notices, rerun form), `no_site`, `installation_gone`, `installation_suspended`, `github_unavailable`, `auth_failed` (three reasons) |
 | throttle refusals | `statusRefusalPage` | with and without a retry hint |
 | consent-handoff failures | `src/error-page.ts` | every failure code in the registry |
 
-Each document is self-contained: no external requests, one inline stylesheet,
-and (on the progress page only) one inline script that never leaves the
-origin. Pages that need no JavaScript degrade to a manual refresh link
-instead of a forced reload.
+Each document has one inline stylesheet and loads nothing from other
+origins. The progress page has one inline script; the landing page, the theme
+detail page and the appearance editor each load one same-origin deferred
+script that only enhances a form that already works without it. Theme
+previews inside their iframes load their own web fonts. Pages that need no
+JavaScript degrade to a manual refresh link instead of a forced reload. Every
+animation sits inside `prefers-reduced-motion: no-preference`.
 
 ## Automated gates
 
 Both gates run in CI (`.github/workflows/ci.yml`) and fail the build.
 
-`bun run test:a11y` scans 27 representative document states with axe-core in
-jsdom and asserts zero serious or critical violations. Its first test plants
+`bun run test:a11y` scans every representative document state above
+(including the landing page after `landing.js` renders each theme's options)
+with axe-core in jsdom and asserts zero serious or critical violations. Its first test plants
 violations in a canary document and asserts they are reported, so the gate
 cannot pass vacuously. Checks that need a real layout engine (color contrast,
 target size) resolve as *incomplete* under jsdom rather than as violations;
@@ -39,6 +45,9 @@ over the DevTools protocol, and asserts for each surface:
 - a Tab walk that reaches every visible interactive element,
 - a visible focus outline (`:focus-visible` sets a 3px outline) on each
   focused element.
+
+The landing page runs there with its real script, font and thumbnails, and
+once more with scripts disabled.
 
 `--shots DIR` saves a 320px screenshot per surface as evidence. The gate
 needs `google-chrome-stable`, which GitHub's `ubuntu-latest` runners ship.
@@ -54,9 +63,9 @@ mechanically.
 | Keyboard-only run | Unplug the mouse. Tab through every surface; the skip link must appear first on Enter; every action must be reachable and operable; focus must stay put across progress-page polls. | all |
 | Screen reader | Run the keyboard pass under VoiceOver (macOS: Cmd-F5) and NVDA (Windows). The progress page must announce stage changes politely once each, the failure message on failure, and the one-shot site-check result after its link is activated; headings must outline the page. | all |
 | Reflow and zoom | Automated (`test:reflow`); spot-check 200% browser zoom on top. | all |
-| Reduced motion | Enable "reduce motion" in the OS; the checklist pulse animation must not run. | progress |
+| Reduced motion | Enable "reduce motion" in the OS; the checklist pulse animation, the landing hero fade-in and the card and button transitions must not run. | progress, landing |
 | Contrast | Light and dark schemes both use the token table below; spot-check with the OS in each mode. | all |
-| No JS | Disable JavaScript; the progress page must still show the current stage with a refresh link, and the status page must work in full (it has no script at all). | progress, status |
+| No JS | Disable JavaScript; the progress page must still show the current stage with a refresh link, and the status page must work in full (it has no script at all). On the landing page the category filter must still filter, and "Start with" must carry the picked theme and color scheme to `/connect/github`. | progress, status, landing |
 
 Screen-reader passes need a human: no screen reader runs in CI. The
 structural guarantees the pass leans on (landmarks, one `h1`, polite live
@@ -70,13 +79,17 @@ WCAG AA (4.5:1, or 3:1 for the large CTA text).
 
 | Token | Light | Dark | Used for |
 | --- | --- | --- | --- |
-| `--fg` on `--bg` | 15.8:1 | 16.0:1 | body text |
-| `--muted` on `--bg` | 6.4:1 | 6.2:1 | secondary text |
-| `--muted` on `--surface` | 6.0:1 | 5.6:1 | notices, cards |
-| `--accent` on `--bg` | 5.2:1 | 7.5:1 | links |
-| `--accent-fg` on `--accent` | 5.2:1 | 7.5:1 | buttons |
-| `--ok` on `--bg` | 5.1:1 | 7.4:1 | success text |
-| `--danger` on `--bg` | 5.4:1 | 5.6:1 | failure text |
+The palette is `SITE_PALETTE` in `src/site-styles.ts`, shared by every page.
+
+| Token | Light | Dark | Used for |
+| --- | --- | --- | --- |
+| `--fg` on `--bg` | 16.0:1 | 15.1:1 | body text |
+| `--muted` on `--bg` | 6.4:1 | 7.2:1 | secondary text |
+| `--muted` on `--surface` | 5.9:1 | 6.6:1 | notices, cards |
+| `--accent` on `--bg` | 9.1:1 | 10.0:1 | links |
+| `--accent-fg` on `--accent` | 10.0:1 | 10.0:1 | buttons |
+| `--ok` on `--bg` | 5.9:1 | 9.8:1 | success text |
+| `--danger` on `--bg` | 6.1:1 | 8.4:1 | failure text |
 
 ## Known limitations
 

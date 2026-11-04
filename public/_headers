@@ -1,0 +1,14 @@
+# Workers Static Assets headers. Previews are real theme output: they may
+# load Google Fonts (and nothing else external), run only the template's
+# preview.js, and can be framed only by inkdrafts.com itself.
+/previews/*
+  Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Cache-Control: public, max-age=3600
+
+/assets/*
+  Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Cache-Control: public, max-age=86400
