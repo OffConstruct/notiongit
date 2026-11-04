@@ -14,6 +14,7 @@ import type { GeneratedRepositoryIdentity } from './repository-generation';
 import type { GithubPagesIdentity } from './github-pages';
 import type { RepositoryDestination } from './repository-naming';
 import { isProvisioningFailureCode, type ProvisioningFailureCode } from './failures';
+import type { SiteAppearance } from './theme-catalog';
 
 export const PROVISIONING_JOB_VERSION = 1;
 export const PROVISIONING_JOB_TTL_SECONDS = 24 * 60 * 60;
@@ -145,7 +146,16 @@ export interface ProvisioningJobData {
    * GitHub Actions' missing-credentials no-op as a success.
    */
   notionSecretsWrittenAt: number | null;
+  /** The theme chosen before signup; null keeps the template default. */
+  appearance: SiteAppearance | null;
+  /** Why `patch_config` wrote url/baseurl only; the job still succeeds. */
+  appearanceSkipped: AppearanceSkipReason | null;
 }
+
+/** `theme_unavailable`: the repository has no manifest for the theme (an
+ * older reused repository, or a catalog newer than the template it was
+ * generated from). `theme_invalid`: the theme left the catalog. */
+export type AppearanceSkipReason = 'theme_unavailable' | 'theme_invalid';
 
 /** Structurally identical to `Env`'s `GithubIdentity`; duplicated here so this
  * module never imports from `index.ts` (which imports this module). */
@@ -209,6 +219,7 @@ export interface CreateProvisioningJobParams {
   identity: ProvisioningJobIdentity;
   repository: RepositoryDestination;
   generatedRepository: GeneratedRepositoryIdentity;
+  appearance?: SiteAppearance | null;
   now: number;
 }
 
@@ -238,6 +249,8 @@ export function createProvisioningJob(params: CreateProvisioningJobParams): Prov
       deployment: null,
       notionLinks: null,
       notionSecretsWrittenAt: null,
+      appearance: params.appearance ?? null,
+      appearanceSkipped: null,
     },
     lock: null,
     wait: null,
@@ -269,14 +282,20 @@ function sanitizedStepErrors(job: ProvisioningJob): ProvisioningJob['steps'] {
 export async function loadProvisioningJob(kv: KVNamespace, jobId: string): Promise<ProvisioningJob | null> {
   const job = await kv.get<ProvisioningJob>(provisioningJobKey(jobId), 'json');
   if (!job || job.version !== PROVISIONING_JOB_VERSION) return null;
-  // Records written before the throttle existed carry no `wait`, and records
-  // written before URL capture existed carry no `notionLinks`; the version
-  // stays 1 because the 24h TTL drains them without a migration.
+  // Records written before the throttle existed carry no `wait`, records
+  // written before URL capture existed carry no `notionLinks`, and records
+  // written before themes carry no `appearance`; the version stays 1 because
+  // the 24h TTL drains them without a migration.
   return {
     ...job,
     steps: sanitizedStepErrors(job),
     wait: job.wait ?? null,
-    data: { ...job.data, notionLinks: job.data.notionLinks ?? null },
+    data: {
+      ...job.data,
+      notionLinks: job.data.notionLinks ?? null,
+      appearance: job.data.appearance ?? null,
+      appearanceSkipped: job.data.appearanceSkipped ?? null,
+    },
   };
 }
 

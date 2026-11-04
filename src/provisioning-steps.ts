@@ -9,7 +9,8 @@
  * the same result instead of a duplicate mutation.
  */
 
-import { patchRepositoryConfig } from './repository-config';
+import { patchSiteConfig, repositoryHasTheme } from './repository-config';
+import { revalidateAppearance, type SiteAppearance } from './theme-catalog';
 import { configureGithubPages } from './github-pages';
 import { awaitGeneratedRepositoryCommit } from './repository-generation';
 import {
@@ -60,14 +61,29 @@ async function runVerifyRepository(job: ProvisioningJob, ctx: StepRunnerContext)
   };
 }
 
+/**
+ * url/baseurl plus, when a theme was chosen, the `inkdrafts:` block, in one
+ * commit. The choice is re-validated against the current catalog and the
+ * repository's own theme manifests; a theme the site cannot render is
+ * skipped (recorded, not failed), so the site falls back to the default.
+ */
 async function runPatchConfig(job: ProvisioningJob, ctx: StepRunnerContext): Promise<Partial<ProvisioningJobData>> {
-  await patchRepositoryConfig(
+  const fullName = job.data.generatedRepository.fullName;
+  let appearance: SiteAppearance | undefined;
+  let appearanceSkipped: ProvisioningJobData['appearanceSkipped'] = null;
+  if (job.data.appearance) {
+    const current = revalidateAppearance(job.data.appearance);
+    if (!current) appearanceSkipped = 'theme_invalid';
+    else if (!(await repositoryHasTheme(ctx.installationToken.raw, fullName, current.themeId, ctx.fetcher))) appearanceSkipped = 'theme_unavailable';
+    else appearance = current;
+  }
+  await patchSiteConfig(
     ctx.installationToken.raw,
-    job.data.generatedRepository.fullName,
-    job.data.repository,
+    fullName,
+    { destination: job.data.repository, appearance },
     { fetcher: ctx.fetcher },
   );
-  return {};
+  return job.data.appearance ? { appearanceSkipped } : {};
 }
 
 async function runConfigurePages(job: ProvisioningJob, ctx: StepRunnerContext): Promise<Partial<ProvisioningJobData>> {

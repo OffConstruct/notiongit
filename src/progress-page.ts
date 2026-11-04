@@ -16,6 +16,7 @@ import {
   type ProgressStageView,
   type PublicProgress,
 } from './progress';
+import { SITE_PAGE_ACCENTS } from './site-styles';
 
 export const PROGRESS_POLL_INTERVAL_MS = 5000;
 export const PROGRESS_POLL_MAX_INTERVAL_MS = 60_000;
@@ -76,33 +77,10 @@ function liveText(progress: PublicProgress): string {
   return current ? PROGRESS_STAGE_REGISTRY[current.id].headline : PAGE_HEADINGS[progress.status];
 }
 
-// The design-token custom properties are duplicated from landing-page.ts on
-// purpose: one self-contained document per route, no shared stylesheet asset.
+// The shared site tokens are interpolated, not linked, so each route stays one
+// self-contained document with no stylesheet request.
 const STYLES = `
-  :root {
-    --bg: #ffffff;
-    --fg: #1f2328;
-    --muted: #57606a;
-    --accent: #0969da;
-    --accent-fg: #ffffff;
-    --border: #d0d7de;
-    --surface: #f6f8fa;
-    --ok: #1a7f37;
-    --danger: #cf222e;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0d1117;
-      --fg: #e6edf3;
-      --muted: #8b949e;
-      --accent: #58a6ff;
-      --accent-fg: #0d1117;
-      --border: #30363d;
-      --surface: #161b22;
-      --ok: #3fb950;
-      --danger: #f85149;
-    }
-  }
+  ${SITE_PAGE_ACCENTS}
   * { box-sizing: border-box; }
   html { color-scheme: light dark; }
   body {
@@ -304,6 +282,8 @@ const SCRIPT = `(() => {
       setNotionLink('notion-root-link', progress.notionLinks.templateRootUrl);
       setNotionLink('notion-pages-link', progress.notionLinks.pagesUrl);
       setNotionLink('notion-posts-link', progress.notionLinks.postsUrl);
+      setText('appearance-note', progress.appearanceNote ?? '');
+      document.getElementById('appearance-note').hidden = !progress.appearanceNote;
       bindSiteCheck();
     }
     if (progress.status === 'failed') {
@@ -397,6 +377,7 @@ function panelsHtml(progress: PublicProgress, jobId: string, siteCheck: SiteChec
   const pagesUrl = progress.status === 'succeeded' ? progress.notionLinks.pagesUrl : null;
   const postsUrl = progress.status === 'succeeded' ? progress.notionLinks.postsUrl : null;
   const checkOutcome = progress.status === 'succeeded' ? siteCheck : null;
+  const appearanceNote = progress.status === 'succeeded' ? progress.appearanceNote : null;
   const checkResultLine = checkOutcome === null
     ? '<p id="site-check-result" class="muted" role="status" hidden></p>'
     : `<p id="site-check-result" class="muted" role="status">${escapeHtml(checkOutcome.reachable ? CHECK_OK_COPY : CHECK_NOT_YET_COPY)}</p>`;
@@ -421,6 +402,7 @@ function panelsHtml(progress: PublicProgress, jobId: string, siteCheck: SiteChec
     `${open('succeeded')}`,
     '<p>Your site is published. It stays in sync with your Notion pages.</p>',
     `<p><a id="site-link" class="cta" href="${escapeHtml(progress.status === 'succeeded' ? progress.site.url : '')}">View your site</a></p>`,
+    `<p id="appearance-note"${appearanceNote === null ? ' hidden' : ''}>${escapeHtml(appearanceNote ?? '')}</p>`,
     '<p class="muted">We checked that your site was live right before publishing finished. If the link does not open yet, GitHub’s network may still be updating it. It is usually ready within a few minutes.</p>',
     checkResultLine,
     `<a id="site-check-link" href="${escapeHtml(checkHref)}">Check if it is up yet</a>`,

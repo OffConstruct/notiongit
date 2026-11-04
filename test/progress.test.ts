@@ -9,6 +9,7 @@ import {
   type ProvisioningStepName,
 } from '../src/provisioning-job';
 import {
+  APPEARANCE_SKIPPED_NOTES,
   projectProvisioning,
   progressPageUrl,
   PROGRESS_STAGE_ORDER,
@@ -164,7 +165,23 @@ describe('progress projection', () => {
         postsUrl: 'https://www.notion.so/alice/Posts-2',
         templateRootUrl: 'https://www.notion.so/alice/Home-3',
       },
+      appearanceNote: null,
     });
+  });
+
+  test('the appearance note names the theme, or says why it was skipped without promising a switch it cannot make', () => {
+    const withAppearance = (skipped: ProvisioningJob['data']['appearanceSkipped'], themeId = 'classic') => {
+      const job = makeJob('succeeded', { completedSteps: 7 });
+      job.data.appearance = { v: 1, themeId, tweaks: {} };
+      job.data.appearanceSkipped = skipped;
+      const progress = projectProvisioning(job, NOW).progress;
+      return progress.status === 'succeeded' ? progress.appearanceNote : undefined;
+    };
+    expect(withAppearance(null)).toBe('Theme: Classic');
+    expect(withAppearance('theme_unavailable')).toBe(APPEARANCE_SKIPPED_NOTES.theme_unavailable);
+    expect(APPEARANCE_SKIPPED_NOTES.theme_unavailable).not.toContain('change it');
+    expect(withAppearance('theme_invalid')).toBe(APPEARANCE_SKIPPED_NOTES.theme_invalid);
+    expect(withAppearance(null, 'left-the-catalog')).toBe(APPEARANCE_SKIPPED_NOTES.theme_invalid);
   });
 
   test('a succeeded record written before URL capture projects all-null links', () => {

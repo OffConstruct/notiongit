@@ -24,6 +24,8 @@ export const FLOW_FAILURE_CODES = [
   'provisioning_paused',
   'provisioning_rejected',
   'provisioning_control_invalid',
+  'theme_unknown',
+  'theme_request_invalid',
 ] as const;
 
 export const NOTION_FAILURE_CODES = [
@@ -217,6 +219,26 @@ const FLOW_FAILURES: { [C in FlowFailureCode]: FailureDescriptor } = {
       action: 'Try again later or contact support if the problem continues.',
     },
     support: { area: 'platform', note: 'Admission control configuration was invalid or unreadable.' },
+  },
+  theme_unknown: {
+    retryable: false,
+    recovery: 'restart_flow',
+    httpStatus: 400,
+    user: {
+      message: 'The theme in this link is not one InkDrafts offers.',
+      action: 'Pick a theme from the gallery and start again.',
+    },
+    support: { area: 'platform', note: 'The theme query parameter named no catalog theme; nothing was stored.' },
+  },
+  theme_request_invalid: {
+    retryable: false,
+    recovery: 'restart_flow',
+    httpStatus: 400,
+    user: {
+      message: 'This theme link carries more settings than InkDrafts accepts.',
+      action: 'Pick a theme from the gallery and start again.',
+    },
+    support: { area: 'platform', note: 'The appearance query exceeded the length or tweak-count limit.' },
   },
 };
 

@@ -86,6 +86,8 @@ describe('createProvisioningJob', () => {
       deployment: null,
       notionLinks: null,
       notionSecretsWrittenAt: null,
+      appearance: null,
+      appearanceSkipped: null,
     });
   });
 });

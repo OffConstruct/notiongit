@@ -11,6 +11,7 @@
  */
 
 import { failureDescriptor, userCopy, type ProvisioningFailureCode } from './failures';
+import { SITE_PAGE_ACCENTS } from './site-styles';
 
 export interface ErrorPageFailure {
   readonly code: ProvisioningFailureCode;
@@ -24,26 +25,7 @@ export interface ErrorPageFailure {
 }
 
 const STYLES = `
-  :root {
-    --bg: #ffffff;
-    --fg: #1f2328;
-    --muted: #57606a;
-    --accent: #0969da;
-    --accent-fg: #ffffff;
-    --border: #d0d7de;
-    --surface: #f6f8fa;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0d1117;
-      --fg: #e6edf3;
-      --muted: #8b949e;
-      --accent: #58a6ff;
-      --accent-fg: #0d1117;
-      --border: #30363d;
-      --surface: #161b22;
-    }
-  }
+  ${SITE_PAGE_ACCENTS}
   * { box-sizing: border-box; }
   html { color-scheme: light dark; }
   body {

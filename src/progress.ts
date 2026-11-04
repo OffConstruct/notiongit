@@ -13,10 +13,12 @@
 import {
   nextPendingStep,
   PROVISIONING_STEP_ORDER,
+  type AppearanceSkipReason,
   type ProvisioningJob,
   type ProvisioningStepName,
 } from './provisioning-job';
 import { FAILURE_REGISTRY, userCopy, type ProvisioningFailureCode } from './failures';
+import { findTheme } from './theme-catalog';
 
 export const PROGRESS_STAGE_ORDER = [
   'github_connected', 'repository_created', 'notion_connected',
@@ -72,7 +74,9 @@ export type PublicProgress =
         readonly pagesUrl: string | null;
         readonly postsUrl: string | null;
         readonly templateRootUrl: string | null;
-      } }
+      };
+      /** One sentence about the chosen theme; null when none was chosen. */
+      readonly appearanceNote: string | null }
   | { readonly status: 'failed'; readonly stages: readonly ProgressStageView[];
       readonly message: string; readonly action: string;
       readonly restartUrl: string | null }
@@ -104,6 +108,22 @@ const NULL_NOTION_LINKS: Extract<PublicProgress, { status: 'succeeded' }>['notio
   postsUrl: null,
   templateRootUrl: null,
 };
+
+/** `theme_unavailable` covers older reused repositories that cannot switch
+ * themes at all, so that note promises no later switch. */
+export const APPEARANCE_SKIPPED_NOTES = {
+  theme_unavailable: 'The theme you picked is not in this site’s repository, so your site keeps its current look.',
+  theme_invalid: 'Your site uses the default theme; change it any time from Status.',
+} as const satisfies Record<AppearanceSkipReason, string>;
+
+/** Catalog names only: a stored id that left the catalog reads as invalid. */
+function appearanceNoteOf(job: ProvisioningJob): string | null {
+  if (!job.data.appearance) return null;
+  const theme = findTheme(job.data.appearance.themeId);
+  if (job.data.appearanceSkipped !== null) return APPEARANCE_SKIPPED_NOTES[job.data.appearanceSkipped];
+  if (!theme) return APPEARANCE_SKIPPED_NOTES.theme_invalid;
+  return `Theme: ${theme.name}`;
+}
 
 export function progressPageUrl(jobId: string): string {
   return `/progress?job_id=${encodeURIComponent(jobId)}`;
@@ -153,6 +173,7 @@ export function projectProvisioning(job: ProvisioningJob | null, now: number): P
         repository: { name: job.data.generatedRepository.name, url: job.data.generatedRepository.htmlUrl },
         site: { url: job.data.repository.url },
         notionLinks: job.data.notionLinks ?? NULL_NOTION_LINKS,
+        appearanceNote: appearanceNoteOf(job),
       },
     };
   }
