@@ -93,6 +93,14 @@ const SESSION_KIND = 'status-session';
 const STATE_KIND = 'status-state';
 const FORM_KIND = 'status-form';
 
+/** Where the callback sends a signed-in owner; an allowlist, never a URL. */
+export const STATUS_NEXT_PAGES = { appearance: '/status/appearance' } as const;
+export type StatusNextPage = keyof typeof STATUS_NEXT_PAGES;
+
+function isStatusNextPage(value: unknown): value is StatusNextPage {
+  return typeof value === 'string' && Object.hasOwn(STATUS_NEXT_PAGES, value);
+}
+
 /** Authorize-leg state. The `k` kind marks it so an install-state token can
  * never verify as a status payload. */
 export interface StatusStatePayload {
@@ -100,14 +108,16 @@ export interface StatusStatePayload {
   k: typeof STATE_KIND;
   nonce: string;
   exp: number;
+  next?: StatusNextPage;
 }
 
-export function statusStatePayload(nowSeconds: number): StatusStatePayload {
+export function statusStatePayload(nowSeconds: number, next?: StatusNextPage): StatusStatePayload {
   return {
     v: 1,
     k: STATE_KIND,
     nonce: crypto.randomUUID(),
     exp: nowSeconds + STATUS_STATE_TTL_SECONDS,
+    ...(next === undefined ? {} : { next }),
   };
 }
 
@@ -134,6 +144,7 @@ export async function verifyStatusState(
     payload.k === STATE_KIND &&
     payload.v === 1 &&
     typeof payload.nonce === 'string' &&
+    (payload.next === undefined || isStatusNextPage(payload.next)) &&
     !payloadExpired(payload.exp, nowSeconds));
 }
 
@@ -434,7 +445,7 @@ export function runIsFreshlyInFlight(run: NotionSyncRunIdentity, nowMs: number):
   return startedAgoMs <= STATUS_RUN_STUCK_SECONDS * 1000;
 }
 
-function discoveryFailure(error: unknown): SiteDiscovery {
+function discoveryFailure(error: unknown): Extract<SiteDiscovery, { ok: false }> {
   if (error instanceof GithubAppAuthError) {
     if (error.status === 404) return { ok: false, reason: 'installation_gone', retryAfterSeconds: null };
     return { ok: false, reason: 'unavailable', retryAfterSeconds: error.retryAfterSeconds };
@@ -458,6 +469,50 @@ export async function discoverSite(
   session: StatusSession,
   fetcher: typeof fetch = fetch,
 ): Promise<SiteDiscovery> {
+  const found = await discoverSiteRepository(appAuth, session, fetcher);
+  if (!found.ok) return found;
+  const { accountLogin, repository, installationToken } = found;
+
+  let syncRun: NotionSyncRunIdentity | null;
+  let build: GithubPagesBuildIdentity | null;
+  try {
+    [syncRun, build] = await Promise.all([
+      latestDispatchedSyncRun(installationToken.raw, repository.fullName, fetcher),
+      latestPagesBuild(installationToken.raw, repository.fullName, fetcher),
+    ]);
+  } catch (error) {
+    return discoveryFailure(error);
+  }
+  const summaryText = syncRun === null || syncRun.status !== 'completed'
+    ? null
+    : await latestSyncRunSummary(installationToken.raw, repository.fullName, syncRun.runId, fetcher);
+  return {
+    ok: true,
+    accountLogin,
+    repository,
+    syncRun,
+    summary: summaryText === null ? null : parseSafeSummary(summaryText),
+    build,
+  };
+}
+
+export type SiteRepositoryDiscovery =
+  | {
+      ok: true;
+      accountLogin: string;
+      repository: GeneratedRepositoryIdentity;
+      /** Minted for this request only; never stored or rendered. */
+      installationToken: Secret<'github-installation'>;
+    }
+  | Extract<SiteDiscovery, { ok: false }>;
+
+/** The installation and repository half of `discoverSite`, for surfaces
+ * (the customize screen) that need the site's repository but not its runs. */
+export async function discoverSiteRepository(
+  appAuth: GithubAppAuthEnv,
+  session: StatusSession,
+  fetcher: typeof fetch = fetch,
+): Promise<SiteRepositoryDiscovery> {
   let installation: GithubInstallationAccount;
   try {
     installation = await getAppInstallation(appAuth, session.installationId, fetcher);
@@ -492,28 +547,7 @@ export async function discoverSite(
   if (repository === null) {
     return { ok: false, reason: 'no_site', retryAfterSeconds: null };
   }
-
-  let syncRun: NotionSyncRunIdentity | null;
-  let build: GithubPagesBuildIdentity | null;
-  try {
-    [syncRun, build] = await Promise.all([
-      latestDispatchedSyncRun(installationToken.raw, repository.fullName, fetcher),
-      latestPagesBuild(installationToken.raw, repository.fullName, fetcher),
-    ]);
-  } catch (error) {
-    return discoveryFailure(error);
-  }
-  const summaryText = syncRun === null || syncRun.status !== 'completed'
-    ? null
-    : await latestSyncRunSummary(installationToken.raw, repository.fullName, syncRun.runId, fetcher);
-  return {
-    ok: true,
-    accountLogin,
-    repository,
-    syncRun,
-    summary: summaryText === null ? null : parseSafeSummary(summaryText),
-    build,
-  };
+  return { ok: true, accountLogin, repository, installationToken };
 }
 
 /**
@@ -681,7 +715,8 @@ export async function statusHome(request: Request, env: Partial<StatusEnv>): Pro
   // the "sign in as a different account" path that the no-site page's
   // remediation copy points at.
   if (url.searchParams.get('connect') === '1') {
-    const payload = statusStatePayload(Math.floor(Date.now() / 1000));
+    const next = url.searchParams.get('next');
+    const payload = statusStatePayload(Math.floor(Date.now() / 1000), isStatusNextPage(next) ? next : undefined);
     const authorizeUrl = new URL('https://github.com/login/oauth/authorize');
     authorizeUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
     authorizeUrl.searchParams.set('redirect_uri', new URL('/auth/github/callback', request.url).toString());
@@ -751,7 +786,8 @@ export async function statusCallback(request: Request, env: Partial<StatusEnv>):
       installationId,
       exp: Math.floor(Date.now() / 1000) + STATUS_SESSION_TTL_SECONDS,
     };
-    return redirectResponse(303, new URL('/status', request.url).toString(), [
+    const landing = payload.next === undefined ? '/status' : STATUS_NEXT_PAGES[payload.next];
+    return redirectResponse(303, new URL(landing, request.url).toString(), [
       sessionCookie(await signStatusSession(session, GITHUB_CLIENT_SECRET)),
       CLEAR_STATE_COOKIE,
     ]);

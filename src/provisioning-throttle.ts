@@ -76,6 +76,7 @@ export const PROVISIONING_ADMISSION_STAGES = [
   'queue_await_deploy_build',
   'queue_verify_deploy',
   'status_rerun',
+  'status_appearance',
 ] as const;
 
 export type ProvisioningAdmissionStage = (typeof PROVISIONING_ADMISSION_STAGES)[number];

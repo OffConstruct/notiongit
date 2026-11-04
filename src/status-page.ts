@@ -12,6 +12,7 @@
  */
 
 import type { DeployOutcome, StatusPageModel, SummaryCounts, SummaryFallbackReason, SyncOutcome } from './status';
+import { SITE_PAGE_ACCENTS } from './site-styles';
 
 /** Request-scoped extras the handlers own: the post-redirect-get notice and
  * the signed CSRF token embedded in the Sync-now form. Neither is domain
@@ -54,30 +55,7 @@ function durationText(seconds: number): string {
 }
 
 const STYLES = `
-  :root {
-    --bg: #ffffff;
-    --fg: #1f2328;
-    --muted: #57606a;
-    --accent: #0969da;
-    --accent-fg: #ffffff;
-    --border: #d0d7de;
-    --surface: #f6f8fa;
-    --ok: #1a7f37;
-    --danger: #cf222e;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0d1117;
-      --fg: #e6edf3;
-      --muted: #8b949e;
-      --accent: #58a6ff;
-      --accent-fg: #0d1117;
-      --border: #30363d;
-      --surface: #161b22;
-      --ok: #3fb950;
-      --danger: #f85149;
-    }
-  }
+  ${SITE_PAGE_ACCENTS}
   * { box-sizing: border-box; }
   html { color-scheme: light dark; }
   body {
@@ -292,6 +270,11 @@ ${syncHtml(model.site.sync, model.site.summaryFallback)}
 ${deployHtml(model.site.deploy)}
 <p>Site: <a href="${escapeHtml(model.site.site.url)}">${escapeHtml(model.site.site.url)}</a><br>
 Repository: <a href="${escapeHtml(model.site.repository.url)}">${escapeHtml(model.site.repository.name)}</a></p>
+</section>
+<section class="card">
+<h2>Appearance</h2>
+<p>Change your site&#39;s theme, colors and fonts.</p>
+<p><a href="/status/appearance">Change appearance</a></p>
 </section>
 ${model.site.runInFlight ? REFRESH_HTML : ''}
 ${chrome.rerunFormToken === null ? '' : rerunFormHtml(chrome.rerunFormToken)}

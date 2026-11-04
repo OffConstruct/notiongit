@@ -38,7 +38,7 @@ Use `pause` when the incident is temporary and you want queued jobs to resume fr
 wrangler kv key put "provisioning:admission:control" '{"version":1,"mode":"pause","pausedStages":[],"rejectedStages":[],"updatedAt":1725408000000,"expiresAt":null}' --binding JOBS --remote --env staging
 ```
 
-Use `active` with stage lists to pause one part of the pipeline. Stage names are `github_connect`, `github_callback`, `github_repository`, `notion_callback`, `notion_secrets`, `queue_verify_repository`, `queue_patch_config`, `queue_configure_pages`, `queue_dispatch_sync`, `queue_await_sync`, `queue_await_deploy_build`, and `queue_verify_deploy`.
+Use `active` with stage lists to pause one part of the pipeline. Stage names are `github_connect`, `github_callback`, `github_repository`, `notion_callback`, `notion_secrets`, `queue_verify_repository`, `queue_patch_config`, `queue_configure_pages`, `queue_dispatch_sync`, `queue_await_sync`, `queue_await_deploy_build`, `queue_verify_deploy`, `status_rerun` (manual syncs from `/status`), and `status_appearance` (theme saves from `/status/appearance`).
 
 ```sh
 wrangler kv key put "provisioning:admission:control" '{"version":1,"mode":"active","pausedStages":["queue_dispatch_sync"],"rejectedStages":[],"updatedAt":1725408000000,"expiresAt":null}' --binding JOBS --remote --env staging
