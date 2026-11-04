@@ -14,12 +14,14 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { evaluate as evaluateIn, launchChrome } from './chrome-cdp';
 import { LANDING_PAGE } from '../src/landing-page';
 import { progressPage } from '../src/progress-page';
 import { projectProvisioning } from '../src/progress';
 import { createProvisioningJob } from '../src/provisioning-job';
 import { statusPage } from '../src/status-page';
 import { errorPage } from '../src/error-page';
+import { themePageStates } from '../test/fixtures/theme-pages';
 
 const shotsDir = process.argv.includes('--shots') ? process.argv[process.argv.indexOf('--shots') + 1] : null;
 if (shotsDir) mkdirSync(shotsDir, { recursive: true });
@@ -81,58 +83,30 @@ const routes: Record<string, string> = {
   '/progress-failed': progressPage('job-123', snapshotFor('dead_letter')),
   '/status': statusPage(session, { notice: null, rerunFormToken: 'token' }),
   '/error': errorPage({ code: 'github_state_replayed', status: 400, retryAfterSeconds: null, restartHref: '/connect/github' }),
+  ...themePageStates(),
 };
+
+// The landing page runs with its real script, font and thumbnails, so the
+// enhanced customizer is what gets walked. Preview pages stay unserved: their
+// own links would otherwise join the keyboard walk through the iframe.
+const STATIC_FILE = /^\/(assets\/[\w./-]+|previews\/[a-z]+\/thumb\.webp)$/u;
+const PUBLIC_DIR = join(import.meta.dir, '..', 'public');
+
+// The same landing document again with scripts off, as a visitor without
+// JavaScript gets it.
+const SCRIPTLESS_SURFACES = new Set(['/?js=off']);
 
 const server = Bun.serve({
   port: 0,
-  fetch: (request) => {
+  fetch: async (request) => {
     const path = new URL(request.url).pathname;
     const document = routes[path];
-    if (document === undefined) return new Response('not found', { status: 404 });
-    return new Response(document, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    if (document !== undefined) return new Response(document, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    const file = STATIC_FILE.test(path) && !path.includes('..') ? Bun.file(join(PUBLIC_DIR, path)) : null;
+    if (file && await file.exists()) return new Response(file);
+    return new Response('not found', { status: 404 });
   },
 });
-
-interface Cdp {
-  send: (method: string, params?: Record<string, unknown>) => Promise<any>;
-  close: () => void;
-}
-
-function connect(wsUrl: string): Promise<Cdp> {
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(wsUrl);
-    let nextId = 1;
-    const pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }>();
-    ws.onopen = () => resolve({
-      send: (method, params = {}) => {
-        const id = nextId++;
-        ws.send(JSON.stringify({ id, method, params }));
-        return new Promise((res, rej) => pending.set(id, { resolve: res, reject: rej }));
-      },
-      close: () => ws.close(),
-    });
-    ws.onerror = () => reject(new Error('CDP WebSocket failed'));
-    ws.onmessage = (event) => {
-      const message = JSON.parse(String(event.data));
-      const entry = pending.get(message.id);
-      if (!entry) return;
-      pending.delete(message.id);
-      message.error ? entry.reject(new Error(message.error.message)) : entry.resolve(message.result);
-    };
-  });
-}
-
-const CHROME_PORT = 9223;
-const CHROME_LOG = '/tmp/notiongit-reflow-chrome.log';
-
-// Output lands in a file so a startup failure on a runner names its cause.
-const chrome = Bun.spawn([
-  'sh', '-c',
-  `exec google-chrome-stable --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage` +
-  ` --disable-extensions --no-first-run --remote-debugging-port=${CHROME_PORT}` +
-  ` --user-data-dir=/tmp/notiongit-reflow-chrome --window-size=1024,800 about:blank` +
-  ` >"${CHROME_LOG}" 2>&1`,
-], { stdout: 'ignore', stderr: 'ignore' });
 
 interface Failure {
   surface: string;
@@ -142,43 +116,23 @@ interface Failure {
 
 const failures: Failure[] = [];
 
+// CI runners cold-start Chrome slowly and a host launch gate can queue it for
+// minutes; launchChrome waits for that (CHROME_START_TIMEOUT_MS).
+const chrome = await launchChrome();
 try {
-  // CI runners cold-start Chrome slowly; 30 seconds with fail-fast on an
-  // early process exit keeps the wait bounded and the failure readable.
-  let pageTarget: { type: string; webSocketDebuggerUrl: string } | undefined;
-  for (let attempt = 0; attempt < 120; attempt++) {
-    if (chrome.exitCode !== null) break;
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    try {
-      const targets = await (await fetch(`http://127.0.0.1:${CHROME_PORT}/json/list`)).json() as { type: string; webSocketDebuggerUrl: string }[];
-      pageTarget = targets.find((target) => target.type === 'page');
-      if (pageTarget) break;
-    } catch {
-      // Chrome not accepting connections yet.
-    }
-  }
-  if (!pageTarget) {
-    const log = await Bun.file(CHROME_LOG).text().catch(() => '(no Chrome log)');
-    throw new Error(
-      `Chrome did not expose a debuggable page (exit code ${chrome.exitCode}). Chrome log:\n${log.slice(-2000)}`,
-    );
-  }
-
-  for (const surface of Object.keys(routes)) {
+  for (const surface of [...Object.keys(routes), ...SCRIPTLESS_SURFACES]) {
     for (const zoom of [1, 2]) {
-      const cdp = await connect(pageTarget.webSocketDebuggerUrl);
+      const { cdp, close } = await chrome.newTab();
       await cdp.send('Page.enable');
       await cdp.send('Runtime.enable');
+      await cdp.send('Emulation.setScriptExecutionDisabled', { value: SCRIPTLESS_SURFACES.has(surface) });
       await cdp.send('Emulation.setDeviceMetricsOverride', {
         width: 320, height: 700, deviceScaleFactor: zoom, mobile: true,
       });
       await cdp.send('Page.navigate', { url: `http://127.0.0.1:${server.port}${surface}` });
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      const evaluate = async (expression: string): Promise<any> => {
-        const result = await cdp.send('Runtime.evaluate', { expression, returnByValue: true });
-        return result.result.value;
-      };
+      const evaluate = (expression: string): Promise<any> => evaluateIn(cdp, expression);
 
       const scrollWidth = await evaluate('document.documentElement.scrollWidth');
       if (scrollWidth > 320) {
@@ -187,8 +141,10 @@ try {
 
       if (zoom === 1) {
         const interactives: string[] = await evaluate(
-          `[...document.querySelectorAll('a[href], button, input:not([type=hidden])')]` +
+          `[...document.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, summary')]` +
           `.filter((el) => el.checkVisibility())` +
+          // Tab reaches one radio per group (the checked one); arrows move within it.
+          `.filter((el) => el.type !== 'radio' || el.checked || !document.querySelector('input[type=radio][name="' + el.name + '"]:checked'))` +
           `.map((el) => el.tagName + '#' + (el.id || ''))`,
         );
         const reached = new Set<string>();
@@ -217,15 +173,15 @@ try {
 
       if (shotsDir !== null && zoom === 1) {
         const shot = await cdp.send('Page.captureScreenshot', { format: 'png' });
-        const name = surface.replaceAll('/', '') || 'landing';
+        const name = surface.replaceAll(/[/?=]/gu, '') || 'landing';
         await Bun.write(join(shotsDir, `${name}-320.png`), Buffer.from(shot.data, 'base64'));
       }
-      cdp.close();
+      await close();
     }
     console.log(`checked ${surface}`);
   }
 } finally {
-  chrome.kill();
+  await chrome.stop();
   server.stop(true);
 }
 

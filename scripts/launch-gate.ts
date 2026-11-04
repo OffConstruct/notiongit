@@ -69,6 +69,17 @@ const CHECKS: readonly Check[] = [
     },
   })),
   {
+    // A catalog built from uncommitted template changes can list themes that
+    // generated repositories lack, so every signup picking one is skipped.
+    name: 'theme previews were built from a committed template revision',
+    run: async () => {
+      const { status, body } = await fetchText(trim('/previews/index.json'));
+      if (status !== 200) return `status ${status}`;
+      const index = JSON.parse(body) as { template_commit?: string; dirty?: boolean };
+      return index.dirty === false ? null : `dirty ${String(index.dirty)} at template ${index.template_commit ?? 'unknown'}`;
+    },
+  },
+  {
     name: 'GitHub callback route is wired (rejects a stateless request)',
     run: async () => {
       const { status, body } = await fetchText(trim('/auth/github/callback'));

@@ -1,0 +1,665 @@
+/* Quire: the site set like a book. One family (EB Garamond), bone paper,
+   one foil accent. Slots: home, blog, post, page. Header, footer and tags
+   use the shared base markup, styled here. */
+
+:root {
+  color-scheme: light;
+  --ink-bg: #f1ecde;
+  --ink-text: #1a1a18;
+  --ink-muted: #6b6553;
+  --ink-accent: var(--tw-accent);
+  --ink-font-body: var(--tw-font-body);
+  --ink-font-display: var(--tw-font-display);
+  --ink-font-mono: var(--tw-font-mono);
+  --quire-rule: #c8bea4;
+  --quire-plate: #e6dfcc;
+  --quire-shadow: 0 24px 48px rgb(0 0 0 / 0.18);
+  --measure: var(--tw-measure, 34em);
+}
+
+:root[data-ink-paper="white"] {
+  --ink-bg: #ffffff;
+  --quire-rule: #d9d4c7;
+  --quire-plate: #f1ecde;
+}
+
+:root[data-ink-mode="dark"] {
+  color-scheme: dark;
+  --ink-bg: #1a1916;
+  --ink-text: #eae3d2;
+  --ink-muted: #a39b86;
+  --ink-accent: var(--tw-accent-dark, var(--tw-accent));
+  --quire-rule: #3b3830;
+  --quire-plate: #24221d;
+  --quire-shadow: 0 24px 48px rgb(0 0 0 / 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-ink-mode="auto"] {
+    color-scheme: dark;
+    --ink-bg: #1a1916;
+    --ink-text: #eae3d2;
+    --ink-muted: #a39b86;
+    --ink-accent: var(--tw-accent-dark, var(--tw-accent));
+    --quire-rule: #3b3830;
+    --quire-plate: #24221d;
+    --quire-shadow: 0 24px 48px rgb(0 0 0 / 0.45);
+  }
+}
+
+@supports (color: oklch(from red l c h)) {
+  :root[data-ink-mode="dark"][data-ink-accent="custom"] {
+    --ink-accent: oklch(from var(--tw-accent) max(l, 0.74) c h);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-ink-mode="auto"][data-ink-accent="custom"] {
+      --ink-accent: oklch(from var(--tw-accent) max(l, 0.74) c h);
+    }
+  }
+}
+
+/* ─── Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  font-size: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ink-bg);
+  color: var(--ink-text);
+  font-family: var(--ink-font-body);
+  font-size: 1.25rem;
+  line-height: 1.6;
+  font-variant-numeric: oldstyle-nums;
+  font-kerning: normal;
+  overflow-wrap: break-word;
+  text-rendering: optimizeLegibility;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+
+a {
+  color: var(--ink-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  transition: color 150ms ease;
+}
+
+a:hover { color: var(--ink-text); }
+
+:focus-visible {
+  outline: 2px solid var(--ink-accent);
+  outline-offset: 3px;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--ink-font-display);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.main {
+  width: min(100% - 2.5rem, var(--measure));
+  margin-inline: auto;
+  padding-block: clamp(2rem, 6vw, 4rem) 5rem;
+}
+
+.container { width: 100%; }
+
+/* Names, titles and excerpts can hold one unbroken word or URL. */
+.quire-name,
+.quire-tagline,
+.quire-book-text,
+.quire-toc-title,
+.quire-standfirst,
+.quire-kicker,
+.quire-outlet,
+.quire-colophon,
+.page-title { overflow-wrap: anywhere; }
+
+.quire-label,
+.ink-header .site-nav,
+.ink-footer,
+.quire-kicker,
+.quire-toc-year,
+.tag-count,
+.tag-post-date,
+.empty-state-kicker {
+  font-variant-caps: all-small-caps;
+  font-variant-numeric: lining-nums;
+  letter-spacing: 0.06em;
+}
+
+/* ─── Header and footer (base markup) ──────────────────────── */
+.ink-header .container,
+.ink-footer .container {
+  width: min(100% - 2.5rem, var(--measure));
+  margin-inline: auto;
+}
+
+.header-inner { padding-block: 1.25rem; }
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 1.5rem;
+  font-size: 1.1rem;
+}
+
+.site-nav a {
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+
+.site-nav a:hover,
+.site-nav a[aria-current="page"] { color: var(--ink-text); }
+
+.site-nav a[aria-current="page"] {
+  text-decoration: underline;
+  text-decoration-color: var(--ink-accent);
+}
+
+.site-nav-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--ink-muted);
+  font-size: 1rem;
+}
+
+.site-nav-empty-title { color: var(--ink-text); font-style: italic; }
+
+.ink-footer { color: var(--ink-muted); }
+
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1.5rem;
+  padding-block: 1.5rem 2.5rem;
+  border-top: 1px solid var(--quire-rule);
+  font-size: 1rem;
+}
+
+.ink-footer a { color: inherit; }
+
+/* ─── Home: half-title, preface, shelf, contents ───────────── */
+.quire-halftitle {
+  min-height: min(44vh, 24rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding-block: 2rem 3rem;
+}
+
+.quire-name {
+  margin: 0;
+  font-style: italic;
+  font-size: clamp(2.75rem, 9vw, 4.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.quire-tagline {
+  margin: 1.25rem 0 0;
+  max-width: 34em;
+  color: var(--ink-muted);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  font-size: 1.15rem;
+  text-wrap: balance;
+}
+
+.quire-section { margin-top: 4.5rem; }
+
+.quire-label {
+  margin: 0 0 1.25rem;
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.quire-label::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--quire-rule);
+}
+
+.quire-bio > p:first-child {
+  font-size: 1.4rem;
+  line-height: 1.5;
+  margin-top: 0;
+}
+
+.quire-bio > blockquote:first-child {
+  margin: 0 0 2rem;
+  padding: 0;
+  border: 0;
+  text-align: right;
+  font-size: 1.15rem;
+  color: var(--ink-muted);
+}
+
+.quire-bio > blockquote:first-child + p { font-size: 1.4rem; line-height: 1.5; }
+
+.quire-bio h2 {
+  margin: 2rem 0 0.5rem;
+  font-size: 1.2rem;
+  font-style: italic;
+}
+
+.quire-bio ul {
+  padding: 0;
+  list-style: none;
+}
+
+.quire-bio li { padding-block: 0.1rem; }
+
+.quire-flap {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--quire-rule);
+}
+
+.quire-portrait {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  flex: none;
+  filter: grayscale(1) contrast(1.05);
+}
+
+.quire-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-style: italic;
+}
+
+.quire-links li:not(:last-child)::after {
+  content: "·";
+  margin-left: 0.5rem;
+  color: var(--ink-muted);
+  font-style: normal;
+}
+
+html[data-ink-books-shelf="off"] .quire-shelf { display: none; }
+
+.quire-book {
+  display: grid;
+  grid-template-columns: minmax(7rem, 11rem) 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  padding-block: 1.25rem;
+}
+
+.quire-book + .quire-book { border-top: 1px solid var(--quire-rule); }
+
+.quire-book-cover {
+  display: block;
+  padding: 0.9rem;
+  background: var(--quire-plate);
+}
+
+.quire-book-cover img {
+  aspect-ratio: 2 / 3;
+  width: 100%;
+  object-fit: cover;
+  box-shadow: var(--quire-shadow);
+}
+
+.quire-book-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-style: italic;
+}
+
+.quire-book-title a {
+  color: var(--ink-text);
+  text-decoration: none;
+}
+
+.quire-book-title a:hover { color: var(--ink-accent); }
+
+.quire-book-year {
+  margin: 0.25rem 0 0.5rem;
+  color: var(--ink-muted);
+  font-variant-caps: all-small-caps;
+  font-variant-numeric: lining-nums;
+  letter-spacing: 0.06em;
+}
+
+.quire-book-excerpt { margin: 0; }
+
+/* ─── Contents list (home and blog) ────────────────────────── */
+.quire-toc {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quire-toc-link {
+  display: grid;
+  grid-template-columns: 2.5ch minmax(0, auto) 1fr auto;
+  align-items: last baseline;
+  column-gap: 0.75rem;
+  padding-block: 0.4rem;
+  color: var(--ink-text);
+  text-decoration: none;
+}
+
+.quire-toc-link:hover .quire-toc-title { color: var(--ink-accent); }
+
+.quire-toc-n {
+  align-self: first baseline;
+  text-align: right;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--ink-muted);
+}
+
+.quire-toc-title { transition: color 150ms ease; }
+
+.quire-toc-outlet {
+  font-style: italic;
+  color: var(--ink-muted);
+}
+
+.quire-toc-leader {
+  align-self: end;
+  margin-bottom: 0.45em;
+  min-width: 1.5rem;
+  border-bottom: 2px dotted var(--quire-rule);
+}
+
+.quire-toc-year { color: var(--ink-muted); white-space: nowrap; }
+
+html:not([data-ink-show-dates="full"]) .quire-date-full,
+html[data-ink-show-dates="full"] .quire-date-year { display: none; }
+
+/* Hidden dates keep the <time> for machines and drop the leader with them. */
+html[data-ink-show-dates="hidden"] .quire-toc-year,
+html[data-ink-show-dates="hidden"] .quire-toc-leader { display: none; }
+html[data-ink-show-dates="hidden"] .quire-toc-link { grid-template-columns: 2.5ch minmax(0, 1fr); }
+html[data-ink-show-dates="hidden"][data-ink-numbering="roman"] .quire-toc-link { grid-template-columns: 5.5ch minmax(0, 1fr); }
+html[data-ink-show-dates="hidden"][data-ink-numbering="none"] .quire-toc-link { grid-template-columns: minmax(0, 1fr); }
+
+/* Roman numerals sit in the number column, so they stay on a long title's
+   first line like the arabic ones. */
+.quire-toc-roman { display: none; }
+html[data-ink-numbering="roman"] .quire-toc-link { grid-template-columns: 5.5ch minmax(0, auto) 1fr auto; }
+html[data-ink-numbering="roman"] .quire-toc-arabic { display: none; }
+html[data-ink-numbering="roman"] .quire-toc-roman {
+  display: inline;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.04em;
+}
+html[data-ink-numbering="none"] .quire-toc-n { display: none; }
+html[data-ink-numbering="none"] .quire-toc-link { grid-template-columns: minmax(0, auto) 1fr auto; }
+
+/* ─── Blog page ────────────────────────────────────────────── */
+.quire-blog-header { margin-bottom: 2.5rem; text-align: center; }
+
+.quire-page-title,
+.page-title,
+.tags-header h1 {
+  margin: 0;
+  font-style: italic;
+  font-size: clamp(2.25rem, 7vw, 3.25rem);
+  line-height: 1.1;
+  text-align: center;
+}
+
+.quire-standfirst {
+  margin: 0.75rem 0 0;
+  font-style: italic;
+  font-size: 1.3rem;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+/* ─── Post: a chapter opening ──────────────────────────────── */
+.quire-chapter-head {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.quire-kicker {
+  margin: 0 0 1rem;
+  color: var(--ink-muted);
+  font-size: 1.05rem;
+}
+
+.quire-chapter-title {
+  margin: 0;
+  font-style: italic;
+  font-size: clamp(2.25rem, 7vw, 3.5rem);
+  line-height: 1.08;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
+.quire-plate {
+  margin: 0 0 2.5rem;
+  padding: clamp(0.75rem, 3vw, 1.5rem);
+  background: var(--quire-plate);
+}
+
+.quire-body,
+.page-content {
+  hyphens: auto;
+  hanging-punctuation: first;
+  overflow-wrap: break-word;
+}
+
+.quire-body > p:first-of-type::first-letter {
+  float: left;
+  font-size: 3.4em;
+  line-height: 0.85;
+  padding: 0.06em 0.08em 0 0;
+  color: var(--ink-accent);
+  font-variant-numeric: lining-nums;
+}
+
+html[data-ink-drop-cap="off"] .quire-body > p:first-of-type::first-letter {
+  float: none;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+  color: inherit;
+}
+
+.quire-body h2,
+.page-content h2 {
+  margin: 2.5rem 0 0.75rem;
+  font-size: 1.5rem;
+  font-style: italic;
+}
+
+.quire-body h3,
+.page-content h3 { margin: 2rem 0 0.5rem; font-size: 1.25rem; }
+
+.quire-body hr,
+.page-content hr {
+  border: 0;
+  margin: 2.5rem 0;
+  text-align: center;
+  height: auto;
+}
+
+.quire-body hr::before,
+.page-content hr::before {
+  content: "*\2002*\2002*";
+  color: var(--ink-accent);
+  font-size: 1.25rem;
+}
+
+blockquote {
+  margin: 2rem 0;
+  padding: 0 0 0 1.5rem;
+  border-left: 1px solid var(--ink-accent);
+  font-style: italic;
+  color: var(--ink-text);
+}
+
+.quire-body img,
+.page-content img { margin-inline: auto; }
+
+code {
+  font-family: var(--ink-font-mono);
+  font-size: 0.78em;
+  font-variant-numeric: normal;
+}
+
+pre {
+  overflow-x: auto;
+  padding: 1rem 1.25rem;
+  background: var(--quire-plate);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+pre code { font-size: 0.8rem; }
+
+/* Wrapped, not scrolled: a scrolling <pre> from Markdown cannot take keyboard focus. */
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  font-size: 1.05rem;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+th, td {
+  padding: 0.4rem 0.75rem 0.4rem 0;
+  text-align: left;
+  border-bottom: 1px solid var(--quire-rule);
+  /* A wide table then fits a phone instead of becoming an unfocusable scroll region. */
+  overflow-wrap: anywhere;
+}
+
+th {
+  font-weight: 400;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+
+.footnotes {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--quire-rule);
+  font-size: 1.05rem;
+  color: var(--ink-muted);
+}
+
+.footnotes ol { padding-left: 1.5rem; }
+
+sup a.footnote { text-decoration: none; font-variant-numeric: lining-nums; }
+
+.quire-outlet {
+  margin-top: 2.5rem;
+  font-style: italic;
+  color: var(--ink-muted);
+}
+
+.quire-colophon {
+  margin-top: 3.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--quire-rule);
+  text-align: center;
+  font-size: 1.05rem;
+  color: var(--ink-muted);
+}
+
+.quire-colophon p { margin: 0.35rem 0; }
+
+.quire-setin { font-style: italic; }
+
+/* ─── Pages (slot) and tags (base markup) ──────────────────── */
+.quire-page-head { text-align: center; margin-bottom: 2.5rem; }
+
+.page-content > h1:first-child {
+  font-style: italic;
+  text-align: center;
+  font-size: clamp(2.25rem, 7vw, 3.25rem);
+}
+
+.tags-header { margin-bottom: 2rem; }
+
+.tag-group { margin-block: 2.25rem; }
+
+.tag-group-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0 0 0.5rem;
+  font-size: 1.4rem;
+  font-style: italic;
+}
+
+.tag-count {
+  font-style: normal;
+  font-size: 1rem;
+  color: var(--ink-muted);
+}
+
+.tag-posts { display: grid; }
+
+.tag-post-link {
+  display: flex;
+  gap: 1rem;
+  padding-block: 0.3rem;
+  border-top: 1px solid var(--quire-rule);
+  color: var(--ink-text);
+  text-decoration: none;
+}
+
+.tag-post-link:hover { color: var(--ink-accent); }
+
+.tag-post-date {
+  flex: none;
+  min-width: 6.5em;
+  color: var(--ink-muted);
+}
+
+/* ─── Empty states (before the first sync) ─────────────────── */
+.empty-state { padding-block: 3rem; text-align: center; }
+.empty-state-mark { display: none; }
+.empty-state-kicker { margin: 0; color: var(--ink-muted); }
+.empty-state-title { font-style: italic; font-size: 2rem; margin: 0.5rem 0; }
+.empty-state-note { color: var(--ink-muted); font-size: 1.05rem; }
+
+/* ─── Small screens ────────────────────────────────────────── */
+@media (max-width: 34rem) {
+  body { font-size: 1.15rem; }
+  .quire-halftitle { min-height: min(40vh, 18rem); }
+  .quire-book { grid-template-columns: 6.5rem 1fr; gap: 1rem; }
+  .quire-book-cover { padding: 0.5rem; }
+  .quire-toc-link { grid-template-columns: 2.5ch minmax(0, 1fr) auto; }
+  .quire-toc-leader { display: none; }
+  html[data-ink-numbering="roman"] .quire-toc-link { grid-template-columns: 5.5ch minmax(0, 1fr) auto; }
+  html[data-ink-numbering="none"] .quire-toc-link { grid-template-columns: minmax(0, 1fr) auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a, .quire-toc-title { transition: none; }
+}

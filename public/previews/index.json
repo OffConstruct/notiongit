@@ -1,0 +1,380 @@
+{
+  "template_commit": "1f60443fe72cfd4abcac459ccd249ca60f226440",
+  "dirty": false,
+  "themes": {
+    "almanac": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "anamorph": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "atelier": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "byline": {
+      "version": "1.0.1",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "cathode": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "chalkboard": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "classic": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "confetti": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "crate": {
+      "version": "0.1.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "dispatch": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "dossier": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "halo": {
+      "version": "0.1.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "issue": {
+      "version": "1.0.1",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "keynote": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "lattice": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "lectern": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "ledger": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "letterhead": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "liner": {
+      "version": "0.1.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "loupe": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "margin": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "marquee": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "megaphone": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "memo": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "plaintext": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "poster": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "press": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "quire": {
+      "version": "1.1.1",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "sidenote": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "signal": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "specimen": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "verso": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "vitrine": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    },
+    "workbench": {
+      "version": "1.0.0",
+      "pages": [
+        "index.html",
+        "blog/index.html",
+        "about/index.html",
+        "tags/index.html",
+        "2026/02/14/the-harbour-at-low-tide/index.html",
+        "2025/11/03/keeping-a-commonplace-book/index.html"
+      ]
+    }
+  }
+}

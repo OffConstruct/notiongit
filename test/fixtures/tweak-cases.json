@@ -1,0 +1,320 @@
+{
+  "manifest": {
+    "id": "golden",
+    "name": "Golden",
+    "palette": {
+      "light": {
+        "bg": "#f1ecde",
+        "text": "#1a1a18",
+        "muted": "#6b6553"
+      },
+      "dark": {
+        "bg": "#1a1916",
+        "text": "#eae3d2",
+        "muted": "#a39b86"
+      }
+    },
+    "fonts": [
+      {
+        "value": "serif",
+        "label": "Serif",
+        "google": "family=EB+Garamond",
+        "stacks": {
+          "body": "Georgia, serif",
+          "display": "Georgia, serif",
+          "mono": "monospace"
+        }
+      },
+      {
+        "value": "sans",
+        "label": "Sans",
+        "google": null,
+        "stacks": {
+          "body": "system-ui, sans-serif",
+          "display": "system-ui, sans-serif",
+          "mono": "monospace"
+        }
+      }
+    ],
+    "tweaks": [
+      {
+        "key": "mode",
+        "type": "select",
+        "label": "Color scheme",
+        "default": "auto",
+        "options": [
+          {
+            "value": "auto",
+            "label": "Auto"
+          },
+          {
+            "value": "light",
+            "label": "Light"
+          },
+          {
+            "value": "dark",
+            "label": "Dark"
+          }
+        ]
+      },
+      {
+        "key": "accent",
+        "type": "color",
+        "label": "Accent",
+        "role": "text",
+        "default": "sienna",
+        "custom": true,
+        "presets": [
+          {
+            "value": "sienna",
+            "label": "Sienna",
+            "light": "#9a4426",
+            "dark": "#e0946f"
+          },
+          {
+            "value": "teal",
+            "label": "Teal",
+            "light": "#1b4b5a",
+            "dark": "#7fc4d3"
+          }
+        ]
+      },
+      {
+        "key": "band",
+        "type": "color",
+        "label": "Band",
+        "role": "surface",
+        "default": "ink",
+        "custom": false,
+        "presets": [
+          {
+            "value": "ink",
+            "label": "Ink",
+            "light": "#1a1a18",
+            "dark": "#eae3d2",
+            "on": "#ffffff"
+          },
+          {
+            "value": "sand",
+            "label": "Sand",
+            "light": "#e8dcc0",
+            "dark": "#3a3326",
+            "on": "#1a1a18"
+          }
+        ]
+      },
+      {
+        "key": "webfonts",
+        "type": "boolean",
+        "label": "Load web fonts",
+        "default": true
+      },
+      {
+        "key": "drop_cap",
+        "type": "boolean",
+        "label": "Drop cap",
+        "default": false
+      },
+      {
+        "key": "measure",
+        "type": "range",
+        "label": "Line length",
+        "min": 30,
+        "max": 38,
+        "step": 2,
+        "unit": "em",
+        "default": 34
+      },
+      {
+        "key": "font",
+        "type": "font",
+        "label": "Typeface",
+        "default": "serif"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "no input keeps every default",
+      "input": {},
+      "expected": {}
+    },
+    {
+      "name": "valid non-defaults are kept",
+      "input": {
+        "mode": "dark",
+        "accent": "teal",
+        "drop_cap": "true",
+        "measure": "36",
+        "font": "sans",
+        "band": "sand"
+      },
+      "expected": {
+        "mode": "dark",
+        "accent": "teal",
+        "drop_cap": true,
+        "measure": 36,
+        "font": "sans",
+        "band": "sand"
+      }
+    },
+    {
+      "name": "values equal to the default are dropped",
+      "input": {
+        "mode": "auto",
+        "accent": "sienna",
+        "webfonts": "true",
+        "measure": "34"
+      },
+      "expected": {}
+    },
+    {
+      "name": "on and off spell booleans",
+      "input": {
+        "webfonts": "off",
+        "drop_cap": "on"
+      },
+      "expected": {
+        "webfonts": false,
+        "drop_cap": true
+      }
+    },
+    {
+      "name": "unknown options and preset names are dropped",
+      "input": {
+        "mode": "sepia",
+        "accent": "mauve",
+        "band": "teal",
+        "font": "comic"
+      },
+      "expected": {}
+    },
+    {
+      "name": "undeclared keys are dropped",
+      "input": {
+        "title": "x",
+        "bogus": "1",
+        "theme_id": "quire"
+      },
+      "expected": {}
+    },
+    {
+      "name": "markup in a value is dropped",
+      "input": {
+        "mode": "<script>",
+        "accent": "\"><b>"
+      },
+      "expected": {}
+    },
+    {
+      "name": "a readable custom hex is lowercased and kept",
+      "input": {
+        "accent": "#0B6E4F"
+      },
+      "expected": {
+        "accent": "#0b6e4f"
+      }
+    },
+    {
+      "name": "a malformed hex is dropped",
+      "input": {
+        "accent": "#0b6e4"
+      },
+      "expected": {}
+    },
+    {
+      "name": "a surface color never takes a custom hex",
+      "input": {
+        "band": "#123456"
+      },
+      "expected": {}
+    },
+    {
+      "name": "range values outside the bounds are dropped",
+      "input": {
+        "measure": "40"
+      },
+      "expected": {}
+    },
+    {
+      "name": "a range value must be a plain number",
+      "input": {
+        "measure": "36px"
+      },
+      "expected": {}
+    },
+    {
+      "name": "range bounds are inclusive",
+      "input": {
+        "measure": "30"
+      },
+      "expected": {
+        "measure": 30
+      }
+    },
+    {
+      "name": "booleans reject other spellings",
+      "input": {
+        "webfonts": "yes",
+        "drop_cap": "1"
+      },
+      "expected": {}
+    },
+    {
+      "name": "a custom hex below the contrast floor is dropped by the worker",
+      "input": {
+        "accent": "#f0e0d0"
+      },
+      "expected": {},
+      "worker_only": "preview.js does not check contrast; the worker never stores such a value, so a preview never receives one"
+    },
+    {
+      "name": "in dark mode a custom hex is judged on the dark ground",
+      "input": {
+        "mode": "dark",
+        "accent": "#f0e060"
+      },
+      "expected": {
+        "mode": "dark",
+        "accent": "#f0e060"
+      }
+    },
+    {
+      "name": "in light mode the same hex is too light and is dropped by the worker",
+      "input": {
+        "mode": "light",
+        "accent": "#f0e060"
+      },
+      "expected": {
+        "mode": "light"
+      },
+      "worker_only": "preview.js does not check contrast"
+    },
+    {
+      "name": "the automatic scheme checks the light ground too",
+      "input": {
+        "accent": "#f0e060"
+      },
+      "expected": {},
+      "worker_only": "preview.js does not check contrast"
+    },
+    {
+      "name": "a dark custom hex passes in dark mode because the theme lifts it there",
+      "input": {
+        "mode": "dark",
+        "accent": "#1a2a6c"
+      },
+      "expected": {
+        "mode": "dark",
+        "accent": "#1a2a6c"
+      }
+    },
+    {
+      "name": "range values off the step grid are dropped",
+      "input": {
+        "measure": "31"
+      },
+      "expected": {}
+    }
+  ]
+}
