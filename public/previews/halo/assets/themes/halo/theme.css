@@ -19,10 +19,9 @@
   --halo-rule: color-mix(in oklab, var(--ink-text) 22%, var(--ink-bg));
   --halo-wash: color-mix(in oklab, var(--ink-text) 7%, var(--ink-bg));
   --halo-gut: clamp(16px, 4vw, 48px);
-  --halo-gap: clamp(72px, 10vw, 140px);
+  --halo-gap: clamp(56px, 7vw, 104px);
   --halo-nav-h: 56px;
-  --halo-poster-h: min(100svh, 1000px);
-  --halo-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --halo-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 :root[data-ink-mode="dark"] {
@@ -174,33 +173,19 @@ html[data-ink-image="original"] .halo-duo img { filter: none; }
 .halo-nav a:hover, .halo-nav a[aria-current="page"] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.3em; }
 .halo-nav-empty { margin: 0; color: var(--ink-muted); font-size: 0.875rem; }
 
-.halo-header--poster .halo-bar { border-bottom: 0; }
-@media (min-width: 720px) and (min-height: 560px) {
-  .halo-header--poster {
-    position: absolute;
-    top: calc(var(--halo-poster-h) - var(--halo-nav-h));
-    left: 0;
-    right: 0;
-    z-index: 2;
-  }
-  .halo-header--poster .halo-bar { padding-block: 0; height: var(--halo-nav-h); }
-  .halo-header--poster .halo-nav { flex: 1; }
-  .halo-header--poster .halo-nav ul { justify-content: space-between; }
-  html:not([data-ink-horizon="off"]) .halo-header--poster a { color: var(--ink-bg); }
-  html:not([data-ink-horizon="off"]) .halo-header--poster a:focus-visible { outline-color: var(--ink-bg); }
-  html[data-ink-horizon="off"] .halo-header--poster .halo-bar { border-top: 1px solid var(--halo-rule); }
-}
+/* On the home poster the bar sits on top of the poster, without its rule. */
+.halo-header--poster .halo-bar { justify-content: center; padding-block: 4px; border-bottom: 0; }
+.halo-nav a { display: inline-flex; align-items: center; min-height: 44px; }
 
 /* Poster */
 .halo-poster {
   position: relative;
   isolation: isolate;
-  min-height: var(--halo-poster-h);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: clamp(16px, 3svh, 32px);
-  padding: clamp(24px, 5svh, 48px) var(--halo-gut) calc(var(--halo-nav-h) + clamp(16px, 3svh, 28px));
+  padding: clamp(24px, 4vw, 48px) var(--halo-gut) clamp(40px, 5vw, 64px);
   overflow: hidden;
   text-align: center;
 }
@@ -211,7 +196,7 @@ html[data-ink-image="original"] .halo-duo img { filter: none; }
   overflow-wrap: anywhere;
   color: var(--ink-text);
 }
-.halo-tagline { margin: clamp(12px, 2svh, 20px) auto 0; max-width: 36em; color: var(--ink-muted); font-size: 1rem; }
+.halo-tagline { margin: clamp(12px, 2vw, 20px) auto 0; max-width: 36em; color: var(--ink-muted); font-size: clamp(1.125rem, 1rem + 0.35vw, 1.25rem); line-height: 1.45; }
 html[data-ink-name-style="left"] .halo-poster { align-items: stretch; text-align: left; }
 html[data-ink-name-style="left"] .halo-tagline { margin-left: 0; }
 html[data-ink-name-style="left"] .halo-lead, html[data-ink-name-style="left"] .halo-poster-portrait { align-self: flex-end; }
@@ -234,12 +219,13 @@ html[data-ink-name-style="outline"] .halo-name { color: transparent; -webkit-tex
 .halo-horizon span:nth-child(2) { flex: 24 0 0; background: color-mix(in oklab, var(--ink-accent) 28%, var(--ink-bg)); }
 .halo-horizon span:nth-child(3) { flex: 18 0 0; background: color-mix(in oklab, var(--ink-accent) 48%, var(--ink-bg)); }
 .halo-horizon span:nth-child(4) { flex: 14 0 0; background: color-mix(in oklab, var(--ink-accent) 72%, var(--ink-bg)); }
-.halo-horizon span:nth-child(5) { flex: 0 0 var(--halo-nav-h); background: var(--ink-accent); }
+.halo-horizon span:nth-child(5) { flex: 0 0 24px; background: var(--ink-accent); }
 html[data-ink-horizon="off"] .halo-horizon { display: none; }
 html[data-ink-hero="none"] .halo-horizon, .halo-poster:not(.halo-poster--has-lead) .halo-horizon { height: 30%; }
 
+/* The cover follows the tagline: 48-64px apart, counting the poster's gap. */
 .halo-lead, .halo-poster-portrait {
-  margin-top: auto;
+  margin-top: clamp(16px, 3vw, 32px);
   width: min(70vw, 34svh, 320px);
   min-width: 160px;
 }
@@ -329,6 +315,10 @@ html[data-ink-hero="none"] .halo-name { font-size: clamp(1.75rem, min(14vw, var(
   scrollbar-color: var(--ink-accent) transparent;
 }
 .halo-releases > li { flex: 0 0 clamp(200px, 24vw, 300px); scroll-snap-align: start; }
+@media (max-width: 599.98px) {
+  /* Most of one card and the edge of the next, so the row reads as one to swipe. */
+  .halo-releases > li { flex-basis: 72%; }
+}
 html[data-ink-releases="grid"] .halo-releases {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
@@ -471,11 +461,8 @@ sup { line-height: 0; }
 }
 
 @media (max-width: 719px), (max-height: 559px) {
-  .halo-poster { min-height: calc(var(--halo-poster-h) - 96px); }
   .halo-name { font-size: clamp(1.75rem, min(15vw, var(--halo-fit-w) / var(--halo-fit)), 5rem); }
   html[data-ink-hero="none"] .halo-name { font-size: clamp(1.75rem, min(17vw, var(--halo-fit-w) / var(--halo-fit)), 6rem); }
-  .halo-horizon span:nth-child(5) { flex-basis: 20px; }
-  .halo-poster { padding-bottom: 36px; }
 }
 
 /* Code wraps instead of scrolling: a scrolling <pre> has nothing to focus, so keyboard users could not reach the hidden part. */

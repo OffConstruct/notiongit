@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="/previews/sidenote/feed.xml" rel="self" type="application/atom+xml" /><link href="/previews/sidenote/" rel="alternate" type="text/html" /><updated>2026-01-01T00:00:00+00:00</updated><id>/previews/sidenote/feed.xml</id><title type="html">Rowan Vale</title><subtitle>A personal website, written in Notion.</subtitle><author><name>Rowan Vale</name><email></email></author><entry><title type="html">The harbour at low tide</title><link href="/previews/sidenote/2026/02/14/the-harbour-at-low-tide/" rel="alternate" type="text/html" title="The harbour at low tide" /><published>2026-02-14T00:00:00+00:00</published><updated>2026-02-14T00:00:00+00:00</updated><id>/previews/sidenote/2026/02/14/the-harbour-at-low-tide</id><content type="html" xml:base="/previews/sidenote/2026/02/14/the-harbour-at-low-tide/"><![CDATA[<p>Twice a day the water leaves, and the harbour shows you its bones: the chains,
+the old tyres hung as fenders, the steps worn into a bowl by two hundred years
+of boots.</p>
+
+<p>At low tide you can walk out to the second mooring post. Nobody tells you this.
+You learn it by watching the boy who sells bait, who learned it from someone
+else.</p>
+
+<h2 id="what-the-mud-keeps">What the mud keeps</h2>
+
+<p>A spoon, a bicycle bell, the brass plate from a boat that sank before anyone
+now living was born. The mud keeps everything and gives it back slowly.</p>
+
+<blockquote>
+  <p>The harbour is not a place. It is a schedule that happens to have walls.</p>
+</blockquote>
+
+<p>I go down most evenings now. The light is better than any photograph of it.</p>]]></content><author><name>Rowan Vale</name></author><category term="essays" /><category term="places" /><summary type="html"><![CDATA[Twice a day the water leaves and the town shows you how it is held together.]]></summary></entry><entry><title type="html">Keeping a commonplace book</title><link href="/previews/sidenote/2025/11/03/keeping-a-commonplace-book/" rel="alternate" type="text/html" title="Keeping a commonplace book" /><published>2025-11-03T00:00:00+00:00</published><updated>2025-11-03T00:00:00+00:00</updated><id>/previews/sidenote/2025/11/03/keeping-a-commonplace-book</id><content type="html" xml:base="/previews/sidenote/2025/11/03/keeping-a-commonplace-book/"><![CDATA[<p>A commonplace book is a notebook of things worth keeping: quotations, sums,
+recipes, the name of a bolt. I have kept one for nineteen years.<sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup> This is how
+it works, in more detail than anyone needs.</p>
+
+<h2 id="the-rules">The rules</h2>
+
+<ol>
+  <li>Write the date before anything else.</li>
+  <li>Copy quotations by hand, with the page number.</li>
+  <li>Never tear out a page; cross it out instead.</li>
+  <li>Index the book when it is full, not before.</li>
+</ol>
+
+<p><strong>Paper</strong> - a plain A5 notebook with numbered pages.</p>
+
+<p><strong>Pen</strong> - whatever is in the coat pocket.</p>
+
+<p><strong>Index</strong> - the last four pages, alphabetical, by subject.</p>
+
+<h2 id="a-worked-example">A worked example</h2>
+
+<p>Here is the index format I settled on after many bad ones:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Subject</th>
+      <th>Pages</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Tides</td>
+      <td>4, 17, 52</td>
+      <td>tables copied from the harbour office</td>
+    </tr>
+    <tr>
+      <td>Radios</td>
+      <td>9, 10</td>
+      <td>valve numbers, a wiring sketch</td>
+    </tr>
+    <tr>
+      <td>Bread</td>
+      <td>33</td>
+      <td>a recipe from a neighbour</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>When the book moved to a computer I wrote a tiny script to rebuild the index:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">re</span>
+
+<span class="k">def</span> <span class="nf">index</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">page</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">re</span><span class="p">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s">"#(\w+)"</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+            <span class="n">entries</span><span class="p">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="p">[]).</span><span class="n">append</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">entries</span><span class="p">.</span><span class="n">items</span><span class="p">()))</span>
+</code></pre></div></div>
+
+<p><img src="/previews/_fixtures/researchers/inline-figure.jpg" alt="A spread of handwritten notes in soft colour" /></p>
+
+<p>The script lives in the back of the book too, written out by hand.<sup id="fnref:2" role="doc-noteref"><a href="#fn:2" class="footnote" rel="footnote">2</a></sup></p>
+
+<blockquote>
+  <p>Whatever you copy out, you keep twice: once on the page and once in the hand.</p>
+</blockquote>
+
+<h2 id="what-it-is-for">What it is for</h2>
+
+<p>Mostly it is for remembering where I read something. Sometimes it is for
+noticing that I have copied the same sentence three times in ten years, which
+tells me more about myself than any diary.</p>
+
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:1" role="doc-endnote">
+      <p>The first one was a school exercise book with a broken spine. <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:2" role="doc-endnote">
+      <p>Yes, this is a little absurd. <a href="#fnref:2" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+  </ol>
+</div>]]></content><author><name>Rowan Vale</name></author><category term="notes" /><category term="craft" /><summary type="html"><![CDATA[A long note on the oldest writing tool I use, with the system that keeps it useful.]]></summary></entry><entry><title type="html">A ledger of small repairs</title><link href="/previews/sidenote/2025/09/20/a-ledger-of-small-repairs/" rel="alternate" type="text/html" title="A ledger of small repairs" /><published>2025-09-20T00:00:00+00:00</published><updated>2025-09-20T00:00:00+00:00</updated><id>/previews/sidenote/2025/09/20/a-ledger-of-small-repairs</id><content type="html" xml:base="/previews/sidenote/2025/09/20/a-ledger-of-small-repairs/"><![CDATA[<p>For one year I wrote down every repair I made. There were one hundred and four.
+Most took less than ten minutes. Three took most of a weekend.</p>
+
+<p>The ledger is not interesting because of the repairs. It is interesting because
+of the pattern: things break where people touch them.</p>]]></content><author><name>Rowan Vale</name></author><category term="essays" /><category term="repair" /><summary type="html"><![CDATA[One year of fixing things, written down: what broke, what it cost, what it taught.]]></summary></entry><entry><title type="html">On writing in public</title><link href="/previews/sidenote/2025/06/08/on-writing-in-public/" rel="alternate" type="text/html" title="On writing in public" /><published>2025-06-08T00:00:00+00:00</published><updated>2025-06-08T00:00:00+00:00</updated><id>/previews/sidenote/2025/06/08/on-writing-in-public</id><content type="html" xml:base="/previews/sidenote/2025/06/08/on-writing-in-public/"><![CDATA[<p>I publish things before they are finished. Two rules make this bearable: date
+everything, and never delete, only revise.</p>]]></content><author><name>Rowan Vale</name></author><category term="craft" /><category term="notes" /><summary type="html"><![CDATA[Why I publish drafts, and the two rules that make it bearable.]]></summary></entry><entry><title type="html">Field recording at the pier</title><link href="/previews/sidenote/2025/03/15/field-recording-at-the-pier/" rel="alternate" type="text/html" title="Field recording at the pier" /><published>2025-03-15T00:00:00+00:00</published><updated>2025-03-15T00:00:00+00:00</updated><id>/previews/sidenote/2025/03/15/field-recording-at-the-pier</id><content type="html" xml:base="/previews/sidenote/2025/03/15/field-recording-at-the-pier/"><![CDATA[<p>We set up at seven on the end of the pier: two microphones, a folding chair and
+a flask. The recording runs for forty minutes. The gull arrives at minute twelve.</p>]]></content><author><name>Rowan Vale</name></author><category term="live" /><category term="sound" /><summary type="html"><![CDATA[An evening session with two microphones, a gull and a very patient audience.]]></summary></entry><entry><title type="html">Everything I know about winter gardens, the people who tend them in the dark, and the vegetables that refuse to give up</title><link href="/previews/sidenote/2024/12/01/everything-i-know-about-winter-gardens/" rel="alternate" type="text/html" title="Everything I know about winter gardens, the people who tend them in the dark, and the vegetables that refuse to give up" /><published>2024-12-01T00:00:00+00:00</published><updated>2024-12-01T00:00:00+00:00</updated><id>/previews/sidenote/2024/12/01/everything-i-know-about-winter-gardens</id><content type="html" xml:base="/previews/sidenote/2024/12/01/everything-i-know-about-winter-gardens/"><![CDATA[<p>The allotments above the harbour are busiest in December, when there is the
+least to do. People come up to check, to talk, to stand in the cold air.</p>]]></content><author><name>Rowan Vale</name></author><category term="essays" /><category term="places" /><category term="seasons" /><summary type="html"><![CDATA[A long title for a short essay about the allotments above the harbour in December.]]></summary></entry><entry><title type="html">Salt roads</title><link href="/previews/sidenote/2024/08/19/salt-roads/" rel="alternate" type="text/html" title="Salt roads" /><published>2024-08-19T00:00:00+00:00</published><updated>2024-08-19T00:00:00+00:00</updated><id>/previews/sidenote/2024/08/19/salt-roads</id><content type="html" xml:base="/previews/sidenote/2024/08/19/salt-roads/"><![CDATA[<p>This essay first appeared in The Salt Review. A short note on how it was
+written follows.</p>
+
+<p>The research took a summer of walking. Most of the roads are now footpaths.</p>]]></content><author><name>Rowan Vale</name></author><category term="clips" /><category term="places" /><summary type="html"><![CDATA[For The Salt Review: the old routes salt took inland, and what is left of them.]]></summary></entry><entry><title type="html">A short note</title><link href="/previews/sidenote/2024/04/02/a-short-note/" rel="alternate" type="text/html" title="A short note" /><published>2024-04-02T00:00:00+00:00</published><updated>2024-04-02T00:00:00+00:00</updated><id>/previews/sidenote/2024/04/02/a-short-note</id><content type="html" xml:base="/previews/sidenote/2024/04/02/a-short-note/"><![CDATA[<p>No excerpt and no tags on this one. Just a line to say the swifts are back.</p>]]></content><author><name>Rowan Vale</name></author><summary type="html"><![CDATA[No excerpt and no tags on this one. Just a line to say the swifts are back.]]></summary></entry><entry><title type="html">Notes on tide tables</title><link href="/previews/sidenote/2023/10/10/notes-on-tide-tables/" rel="alternate" type="text/html" title="Notes on tide tables" /><published>2023-10-10T00:00:00+00:00</published><updated>2023-10-10T00:00:00+00:00</updated><id>/previews/sidenote/2023/10/10/notes-on-tide-tables</id><content type="html" xml:base="/previews/sidenote/2023/10/10/notes-on-tide-tables/"><![CDATA[<p>The tables in the harbour office go back to 1890. The handwriting changes every
+few years, and so do the mistakes.</p>]]></content><author><name>Rowan Vale</name></author><category term="notes" /><category term="data" /><summary type="html"><![CDATA[Copying a hundred years of tide observations by hand, and what the errors say.]]></summary></entry><entry><title type="html">Hello again</title><link href="/previews/sidenote/2023/05/21/hello-again/" rel="alternate" type="text/html" title="Hello again" /><published>2023-05-21T00:00:00+00:00</published><updated>2023-05-21T00:00:00+00:00</updated><id>/previews/sidenote/2023/05/21/hello-again</id><content type="html" xml:base="/previews/sidenote/2023/05/21/hello-again/"><![CDATA[<p>This is the first post on the new site. The old one is archived.</p>]]></content><author><name>Rowan Vale</name></author><category term="notes" /><summary type="html"><![CDATA[The first post on the new site.]]></summary></entry></feed>

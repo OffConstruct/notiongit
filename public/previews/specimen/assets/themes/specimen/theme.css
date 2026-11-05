@@ -29,7 +29,7 @@
   --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px;
   --gutter: clamp(16px, 3vw, 40px);
   --row-pad: var(--space-sm);
-  --size-mono: 0.9375rem;
+  --size-mono: 1rem;
 }
 
 :root[data-ink-mode="dark"] {
@@ -192,7 +192,7 @@ html[data-ink-index-view="grid"] [data-variant="index_view:table"] { display: no
 .spec-plates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-xl) var(--space-lg); margin: var(--space-lg) 0 0; padding: 0; list-style: none; }
 .spec-plate a { display: grid; gap: var(--space-sm); text-decoration: none; }
 .spec-plate-img, .spec-plate-type { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: var(--well); }
-.spec-plate-type { display: flex; align-items: flex-end; padding: var(--space-md); border: 1px solid var(--rule); font-size: 1.5rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; overflow-wrap: break-word; }
+.spec-plate-type { display: flex; align-items: flex-end; padding: var(--space-md); border: 1px solid var(--rule); background: color-mix(in oklab, var(--ink-accent) 14%, var(--well)); font-size: 1.5rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; overflow-wrap: break-word; }
 .spec-plate-title { font-weight: 600; line-height: 1.3; }
 .spec-plate a:hover .spec-plate-title { text-decoration: underline; text-decoration-color: var(--ink-accent); text-decoration-thickness: 2px; }
 .spec-plate-meta { margin-top: var(--space-2xs); color: var(--ink-muted); font-family: var(--font-outlier); font-size: var(--size-mono); }

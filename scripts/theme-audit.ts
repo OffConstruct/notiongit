@@ -12,6 +12,8 @@
  *   setting), and on the home page for every non-default value of every other
  *   tweak (real Chrome computes color contrast, which jsdom cannot);
  * - no horizontal overflow at 320 CSS px, at 1x and 2x;
+ * - the phone menu at 390 CSS px: one row (never a last row with one link)
+ *   and links at least 44px tall;
  * - a keyboard walk on the home page: every focus stop shows an indicator;
  * - CSP violations, which flag any external load other than Google Fonts.
  * Prints every finding and a summary, deletes its temp dir (with --keep it
@@ -57,7 +59,7 @@ interface Finding {
   theme: string;
   page: string;
   variant: string;
-  check: 'axe' | 'overflow' | 'focus' | 'csp' | 'load';
+  check: 'axe' | 'overflow' | 'focus' | 'csp' | 'load' | 'nav';
   detail: string;
 }
 
@@ -176,6 +178,19 @@ try {
       }
     }
 
+    // Phones: the main menu is one row (no orphaned last item) of 44px tap targets.
+    context = { page: 'index.html', variant: 'nav@390' };
+    await open(cdp, `${base}/previews/${id}/`, 390, 1);
+    const nav = await evaluate(cdp, `(() => { const nav = document.querySelector('nav[aria-label="Main navigation"]');
+      if (!nav) return null;
+      const links = [...nav.querySelectorAll('a')].filter((a) => a.getClientRects().length > 0);
+      const rows = new Map();
+      for (const a of links) { const top = Math.round(a.getBoundingClientRect().top); rows.set(top, (rows.get(top) ?? 0) + 1); }
+      const small = links.filter((a) => a.getBoundingClientRect().height < 44).map((a) => a.textContent.trim().replace(/\\s+/g, ' '));
+      return { rows: [...rows.entries()].sort((x, y) => x[0] - y[0]).map(([, n]) => n), small }; })()`);
+    if (nav && nav.rows.length > 1 && nav.rows.at(-1) === 1) findings.push({ theme: id, ...context, check: 'nav', detail: `the menu wraps and its last row holds one link (rows: ${nav.rows.join(' + ')})` });
+    if (nav && nav.small.length > 0) findings.push({ theme: id, ...context, check: 'nav', detail: `menu links under 44px tall: ${nav.small.join(', ')}` });
+
     context = { page: 'index.html', variant: 'keyboard' };
     await open(cdp, `${base}/previews/${id}/`, 1280, 1);
     for (let stop = 0; stop < 40; stop += 1) {
@@ -184,8 +199,10 @@ try {
       }
       const focus = await evaluate(cdp, `(() => { const el = document.activeElement;
         if (!el || el === document.body) return null;
+        // A stretched link (::after covering its card) draws the ring on the pseudo-element.
+        const ring = (s) => s.outlineStyle !== 'none' && s.outlineWidth !== '0px';
         const s = getComputedStyle(el);
-        const visible = (s.outlineStyle !== 'none' && s.outlineWidth !== '0px') || s.boxShadow !== 'none';
+        const visible = ring(s) || s.boxShadow !== 'none' || ring(getComputedStyle(el, '::after'));
         return { name: el.tagName + (el.id ? '#' + el.id : '') + ' ' + (el.textContent || '').trim().slice(0, 30), visible }; })()`);
       if (focus === null) break;
       if (!focus.visible) findings.push({ theme: id, ...context, check: 'focus', detail: `${focus.name} shows no focus indicator` });

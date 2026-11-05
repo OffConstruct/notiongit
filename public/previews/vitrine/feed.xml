@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="/previews/vitrine/feed.xml" rel="self" type="application/atom+xml" /><link href="/previews/vitrine/" rel="alternate" type="text/html" /><updated>2026-01-01T00:00:00+00:00</updated><id>/previews/vitrine/feed.xml</id><title type="html">Rowan Vale</title><subtitle>A personal website, written in Notion.</subtitle><author><name>Rowan Vale</name><email></email></author><entry><title type="html">Copying Boudin: the harbour at low tide</title><link href="/previews/vitrine/2026/02/14/the-harbour-at-low-tide/" rel="alternate" type="text/html" title="Copying Boudin: the harbour at low tide" /><published>2026-02-14T00:00:00+00:00</published><updated>2026-02-14T00:00:00+00:00</updated><id>/previews/vitrine/2026/02/14/the-harbour-at-low-tide</id><content type="html" xml:base="/previews/vitrine/2026/02/14/the-harbour-at-low-tide/"><![CDATA[<p>Boudin painted skies that look gray until you try to mix them. This copy
+took a week, and the sky took five days of it.</p>]]></content><author><name>Rowan Vale</name></author><category term="copies" /><category term="painting" /><summary type="html"><![CDATA[What a week of copying a small harbour painting taught me about gray skies.]]></summary></entry><entry><title type="html">The wave: a woodblock study</title><link href="/previews/vitrine/2026/01/18/the-wave-a-print-study/" rel="alternate" type="text/html" title="The wave: a woodblock study" /><published>2026-01-18T00:00:00+00:00</published><updated>2026-01-18T00:00:00+00:00</updated><id>/previews/vitrine/2026/01/18/the-wave-a-print-study</id><content type="html" xml:base="/previews/vitrine/2026/01/18/the-wave-a-print-study/"><![CDATA[<p>I cut five blocks to copy one wave. The blue block alone took a month, and
+I finally understand why the foam looks like fingers.</p>]]></content><author><name>Rowan Vale</name></author><category term="prints" /><category term="copies" /><summary type="html"><![CDATA[Cutting five blocks to understand one famous print.]]></summary></entry><entry><title type="html">Snow at Numazu: on copying masters</title><link href="/previews/vitrine/2025/12/06/snow-at-numazu/" rel="alternate" type="text/html" title="Snow at Numazu: on copying masters" /><published>2025-12-06T00:00:00+00:00</published><updated>2025-12-06T00:00:00+00:00</updated><id>/previews/vitrine/2025/12/06/snow-at-numazu</id><content type="html" xml:base="/previews/vitrine/2025/12/06/snow-at-numazu/"><![CDATA[<p>Copying is slow looking. Every line I cut is a question about why the
+original artist cut it there.</p>]]></content><author><name>Rowan Vale</name></author><category term="prints" /><category term="copies" /><summary type="html"><![CDATA[A tall winter print, and why copying is the best teacher I have had.]]></summary></entry><entry><title type="html">Keeping a commonplace book: sketchbook pages</title><link href="/previews/vitrine/2025/11/03/keeping-a-commonplace-book/" rel="alternate" type="text/html" title="Keeping a commonplace book: sketchbook pages" /><published>2025-11-03T00:00:00+00:00</published><updated>2025-11-03T00:00:00+00:00</updated><id>/previews/vitrine/2025/11/03/keeping-a-commonplace-book</id><content type="html" xml:base="/previews/vitrine/2025/11/03/keeping-a-commonplace-book/"><![CDATA[<p>A commonplace book is a notebook of things worth keeping. Mine is a
+sketchbook with an index.<sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup> Here is how it works.</p>
+
+<h2 id="the-rules">The rules</h2>
+
+<ol>
+  <li>Write the date before anything else.</li>
+  <li>Copy the source with every note, even a page number.</li>
+  <li>Never delete an entry; cross it out instead.</li>
+</ol>
+
+<p><strong>Paper</strong> - a plain A5 book with numbered pages.</p>
+
+<p><strong>Index</strong> - the last four pages, by subject.</p>
+
+<h2 id="a-worked-example">A worked example</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Subject</th>
+      <th>Pages</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Boats</td>
+      <td>4, 17, 52</td>
+      <td>pencil and wash</td>
+    </tr>
+    <tr>
+      <td>Hands</td>
+      <td>9, 10</td>
+      <td>from life</td>
+    </tr>
+    <tr>
+      <td>Skies</td>
+      <td>33</td>
+      <td>color notes</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <p>Draw what you see, not what you know.</p>
+</blockquote>
+
+<p>When the notes moved to a computer I wrote a tiny script to rebuild the index:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>boats   4 17 52
+hands   9 10
+skies   33
+</code></pre></div></div>
+
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:1" role="doc-endnote">
+      <p>The first one is from art school and mostly drawings of chairs. <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+  </ol>
+</div>]]></content><author><name>Rowan Vale</name></author><category term="sketchbook" /><category term="notes" /><summary type="html"><![CDATA[How I keep a sketchbook that I can still find things in, ten years later.]]></summary></entry><entry><title type="html">Still life with a ledger</title><link href="/previews/vitrine/2025/09/20/still-life-with-ledger/" rel="alternate" type="text/html" title="Still life with a ledger" /><published>2025-09-20T00:00:00+00:00</published><updated>2025-09-20T00:00:00+00:00</updated><id>/previews/vitrine/2025/09/20/still-life-with-ledger</id><content type="html" xml:base="/previews/vitrine/2025/09/20/still-life-with-ledger/"><![CDATA[<p>The harbour office lent me its 1890 ledger for a week. I painted it open
+at the page where the tide tables begin.</p>]]></content><author><name>Rowan Vale</name></author><category term="painting" /><summary type="html"><![CDATA[Painting the old harbour accounts book, before it goes to the archive.]]></summary></entry><entry><title type="html">Night sea, oil on board</title><link href="/previews/vitrine/2025/06/01/night-sea/" rel="alternate" type="text/html" title="Night sea, oil on board" /><published>2025-06-01T00:00:00+00:00</published><updated>2025-06-01T00:00:00+00:00</updated><id>/previews/vitrine/2025/06/01/night-sea</id><content type="html" xml:base="/previews/vitrine/2025/06/01/night-sea/"><![CDATA[<p>Painted from memory the morning after a storm. The waves are mostly
+palette knife.</p>]]></content><author><name>Rowan Vale</name></author><category term="painting" /><summary type="html"><![CDATA[A small, dark painting of the breakwater in a storm.]]></summary></entry><entry><title type="html">Open studio in March</title><link href="/previews/vitrine/2025/03/10/open-studio-march/" rel="alternate" type="text/html" title="Open studio in March" /><published>2025-03-10T00:00:00+00:00</published><updated>2025-03-10T00:00:00+00:00</updated><id>/previews/vitrine/2025/03/10/open-studio-march</id><content type="html" xml:base="/previews/vitrine/2025/03/10/open-studio-march/"><![CDATA[<p>Come and see the work in progress, try a woodblock, and drink too much tea.
+Saturday and Sunday, ten until four.</p>]]></content><author><name>Rowan Vale</name></author><category term="news" /><summary type="html"><![CDATA[The studio is open on the first weekend of March. Everyone is welcome.]]></summary></entry></feed>

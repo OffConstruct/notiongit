@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="/previews/lectern/feed.xml" rel="self" type="application/atom+xml" /><link href="/previews/lectern/" rel="alternate" type="text/html" /><updated>2026-01-01T00:00:00+00:00</updated><id>/previews/lectern/feed.xml</id><title type="html">Rowan Vale</title><subtitle>A personal website, written in Notion.</subtitle><author><name>Rowan Vale</name><email></email></author><entry><title type="html">The harbour at low tide: a field trip plan</title><link href="/previews/lectern/2026/02/14/the-harbour-at-low-tide/" rel="alternate" type="text/html" title="The harbour at low tide: a field trip plan" /><published>2026-02-14T00:00:00+00:00</published><updated>2026-02-14T00:00:00+00:00</updated><id>/previews/lectern/2026/02/14/the-harbour-at-low-tide</id><content type="html" xml:base="/previews/lectern/2026/02/14/the-harbour-at-low-tide/"><![CDATA[<p>The spring low tide uncovers most of the harbour floor. This plan covers
+timing, safety, groups of five and a worksheet the pupils can finish back
+in class.</p>]]></content><author><name>Rowan Vale</name></author><category term="field trips" /><category term="tides" /><summary type="html"><![CDATA[A two-hour trip for thirty pupils, with a risk checklist and a worksheet.]]></summary></entry><entry><title type="html">Lesson 1: Why the tide comes in</title><link href="/previews/lectern/2026/01/12/lesson-1-why-the-tide-comes-in/" rel="alternate" type="text/html" title="Lesson 1: Why the tide comes in" /><published>2026-01-12T00:00:00+00:00</published><updated>2026-01-12T00:00:00+00:00</updated><id>/previews/lectern/2026/01/12/lesson-1-why-the-tide-comes-in</id><content type="html" xml:base="/previews/lectern/2026/01/12/lesson-1-why-the-tide-comes-in/"><![CDATA[<p>Start with a question: where does the water go? Then a model with a bucket
+and a torch. End with each pupil drawing the Moon’s pull in their own way.</p>]]></content><author><name>Rowan Vale</name></author><category term="lessons" /><category term="tides" /><summary type="html"><![CDATA[The Moon, the Sun and a bucket of water: the first lesson of the unit.]]></summary></entry><entry><title type="html">Lesson 2: Reading a tide table</title><link href="/previews/lectern/2025/12/01/lesson-2-reading-a-tide-table/" rel="alternate" type="text/html" title="Lesson 2: Reading a tide table" /><published>2025-12-01T00:00:00+00:00</published><updated>2025-12-01T00:00:00+00:00</updated><id>/previews/lectern/2025/12/01/lesson-2-reading-a-tide-table</id><content type="html" xml:base="/previews/lectern/2025/12/01/lesson-2-reading-a-tide-table/"><![CDATA[<p>Pupils pick a day, read the high and low waters, and draw the day as a
+wave. Then they plan a safe time to visit the beach.</p>]]></content><author><name>Rowan Vale</name></author><category term="lessons" /><category term="tides" /><summary type="html"><![CDATA[Turning a page of numbers into a story about one day at the harbour.]]></summary></entry><entry><title type="html">Keeping a commonplace book with your class</title><link href="/previews/lectern/2025/11/03/keeping-a-commonplace-book/" rel="alternate" type="text/html" title="Keeping a commonplace book with your class" /><published>2025-11-03T00:00:00+00:00</published><updated>2025-11-03T00:00:00+00:00</updated><id>/previews/lectern/2025/11/03/keeping-a-commonplace-book</id><content type="html" xml:base="/previews/lectern/2025/11/03/keeping-a-commonplace-book/"><![CDATA[<p>A commonplace book is a notebook of things worth keeping. My class keeps
+one together: questions, facts and drawings.<sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup> Here is how it works.</p>
+
+<h2 id="the-rules">The rules</h2>
+
+<ol>
+  <li>Write the date before anything else.</li>
+  <li>Copy the source with every note, even a page number.</li>
+  <li>Never delete an entry; cross it out instead.</li>
+</ol>
+
+<p><strong>Question</strong> - any pupil can add one, with their initials.</p>
+
+<p><strong>Answer</strong> - added later, by anyone who finds it.</p>
+
+<h2 id="a-worked-example">A worked example</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Question</th>
+      <th>Answered by</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Why is the sea salty?</td>
+      <td>MK, Year 6</td>
+      <td>with a diagram</td>
+    </tr>
+    <tr>
+      <td>Do fish sleep?</td>
+      <td>the whole class</td>
+      <td>still arguing</td>
+    </tr>
+    <tr>
+      <td>How deep is the harbour?</td>
+      <td>the harbour master</td>
+      <td>6 metres</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <p>A good question is worth more than a quick answer.</p>
+</blockquote>
+
+<p>When the notes moved to a computer I wrote a tiny script to rebuild the index:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Why is the sea salty?      answered  p. 4
+Do fish sleep?             open      p. 9
+How deep is the harbour?   answered  p. 12
+</code></pre></div></div>
+
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:1" role="doc-endnote">
+      <p>The first book is now in the school library. <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+  </ol>
+</div>]]></content><author><name>Rowan Vale</name></author><category term="classroom" /><category term="notes" /><summary type="html"><![CDATA[How my pupils keep a shared notebook of questions, and why it works.]]></summary></entry><entry><title type="html">Lesson 3: Mapping the shore</title><link href="/previews/lectern/2025/09/15/lesson-3-mapping-the-shore/" rel="alternate" type="text/html" title="Lesson 3: Mapping the shore" /><published>2025-09-15T00:00:00+00:00</published><updated>2025-09-15T00:00:00+00:00</updated><id>/previews/lectern/2025/09/15/lesson-3-mapping-the-shore</id><content type="html" xml:base="/previews/lectern/2025/09/15/lesson-3-mapping-the-shore/"><![CDATA[<p>Two maps of the same beach, six hours apart. The difference is the lesson.</p>]]></content><author><name>Rowan Vale</name></author><category term="lessons" /><category term="field trips" /><summary type="html"><![CDATA[Pupils draw a map of the beach at low tide, then again at high tide.]]></summary></entry><entry><title type="html">Teaching with old paintings</title><link href="/previews/lectern/2025/06/02/teaching-with-old-paintings/" rel="alternate" type="text/html" title="Teaching with old paintings" /><published>2025-06-02T00:00:00+00:00</published><updated>2025-06-02T00:00:00+00:00</updated><id>/previews/lectern/2025/06/02/teaching-with-old-paintings</id><content type="html" xml:base="/previews/lectern/2025/06/02/teaching-with-old-paintings/"><![CDATA[<p>I show the class a print of a giant wave and ask one question: could this
+happen here? Forty minutes later, we have covered wind, depth and safety.</p>]]></content><author><name>Rowan Vale</name></author><category term="classroom" /><summary type="html"><![CDATA[A famous print of a wave starts the best science conversations I have had.]]></summary></entry><entry><title type="html">Notes for parents’ evening</title><link href="/previews/lectern/2025/03/20/parents-evening-notes/" rel="alternate" type="text/html" title="Notes for parents’ evening" /><published>2025-03-20T00:00:00+00:00</published><updated>2025-03-20T00:00:00+00:00</updated><id>/previews/lectern/2025/03/20/parents-evening-notes</id><content type="html" xml:base="/previews/lectern/2025/03/20/parents-evening-notes/"><![CDATA[<p>Ask your child to explain the tide to you. If they can, they have learned
+it. If they cannot, the bucket experiment works in a bath.</p>]]></content><author><name>Rowan Vale</name></author><category term="classroom" /><summary type="html"><![CDATA[What we are learning this term, and how to help at home.]]></summary></entry></feed>

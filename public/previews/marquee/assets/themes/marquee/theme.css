@@ -269,7 +269,7 @@ html[data-ink-card-tones="accent"] .mq-card {
 .mq-card-link { color: inherit; text-decoration: none; }
 .mq-card-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
 .mq-card-link:focus-visible { outline: none; }
-.mq-card:has(.mq-card-link:focus-visible) { outline: 3px solid var(--ink-text); outline-offset: 4px; }
+.mq-card-link:focus-visible::after { outline: 3px solid var(--ink-text); outline-offset: 4px; }
 .mq-card-excerpt { order: 3; margin: 0 0 1.5rem; max-width: 46ch; color: var(--card-muted); font-size: 1rem; line-height: 1.55; }
 .mq-card-cta { order: 4; margin-top: auto; font-weight: 700; }
 .mq-card-img {

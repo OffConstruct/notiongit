@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="/previews/memo/feed.xml" rel="self" type="application/atom+xml" /><link href="/previews/memo/" rel="alternate" type="text/html" /><updated>2026-01-01T00:00:00+00:00</updated><id>/previews/memo/feed.xml</id><title type="html">Rowan Vale</title><subtitle>A personal website, written in Notion.</subtitle><author><name>Rowan Vale</name><email></email></author><entry><title type="html">Moorings passes 1,000 bookings a month</title><link href="/previews/memo/2026/03/01/moorings-1000-boats/" rel="alternate" type="text/html" title="Moorings passes 1,000 bookings a month" /><published>2026-03-01T00:00:00+00:00</published><updated>2026-03-01T00:00:00+00:00</updated><id>/previews/memo/2026/03/01/moorings-1000-boats</id><content type="html" xml:base="/previews/memo/2026/03/01/moorings-1000-boats/"><![CDATA[<p>In February, visiting boats made 1,042 bookings through Moorings. Most
+came from harbours that joined last summer. The thing that did not work:
+paid ads. Every harbour came from a recommendation.</p>]]></content><author><name>Rowan Vale</name></author><category term="live" /><category term="moorings" /><summary type="html"><![CDATA[The numbers, what worked, and the one thing that did not.]]></summary></entry><entry><title type="html">The harbour at low tide: what a slow month taught us</title><link href="/previews/memo/2026/02/14/the-harbour-at-low-tide/" rel="alternate" type="text/html" title="The harbour at low tide: what a slow month taught us" /><published>2026-02-14T00:00:00+00:00</published><updated>2026-02-14T00:00:00+00:00</updated><id>/previews/memo/2026/02/14/the-harbour-at-low-tide</id><content type="html" xml:base="/previews/memo/2026/02/14/the-harbour-at-low-tide/"><![CDATA[<p>When the harbour empties, so does our booking calendar. This January we
+fixed eighty small bugs, rewrote the welcome email, and took a week off.</p>]]></content><author><name>Rowan Vale</name></author><category term="lessons" /><category term="moorings" /><summary type="html"><![CDATA[January is our quietest month. This year we used it to fix everything we had put off.]]></summary></entry><entry><title type="html">Keeping a commonplace book of customer calls</title><link href="/previews/memo/2025/11/03/keeping-a-commonplace-book/" rel="alternate" type="text/html" title="Keeping a commonplace book of customer calls" /><published>2025-11-03T00:00:00+00:00</published><updated>2025-11-03T00:00:00+00:00</updated><id>/previews/memo/2025/11/03/keeping-a-commonplace-book</id><content type="html" xml:base="/previews/memo/2025/11/03/keeping-a-commonplace-book/"><![CDATA[<p>A commonplace book is a notebook of things worth keeping. Mine is every
+customer call since day one.<sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup> Here is how I keep it useful.</p>
+
+<h2 id="the-rules">The rules</h2>
+
+<ol>
+  <li>Write the date before anything else.</li>
+  <li>Copy the source with every note, even a page number.</li>
+  <li>Never delete an entry; cross it out instead.</li>
+</ol>
+
+<p><strong>Date</strong> - first, before the harbour’s name.</p>
+
+<p><strong>Ask</strong> - what they asked for, in their words.</p>
+
+<h2 id="a-worked-example">A worked example</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Harbour</th>
+      <th>Asked for</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>North Quay</td>
+      <td>refunds</td>
+      <td>built in March</td>
+    </tr>
+    <tr>
+      <td>Port Ellery</td>
+      <td>a printed list</td>
+      <td>built in May</td>
+    </tr>
+    <tr>
+      <td>Salt Cove</td>
+      <td>dark mode</td>
+      <td>not yet</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <p>Your customers will tell you what to build if you write it down.</p>
+</blockquote>
+
+<p>When the notes moved to a computer I wrote a tiny script to rebuild the index:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2025-03-02  North Quay   refunds        built
+2025-05-11  Port Ellery  printed list   built
+2025-06-19  Salt Cove    dark mode      open
+</code></pre></div></div>
+
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:1" role="doc-endnote">
+      <p>It is now a spreadsheet, but I still call it the book. <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+  </ol>
+</div>]]></content><author><name>Rowan Vale</name></author><category term="notes" /><category term="customers" /><summary type="html"><![CDATA[Every call with a harbour master goes into one notebook. Here is the system.]]></summary></entry><entry><title type="html">We sold the tide tables print shop</title><link href="/previews/memo/2025/09/30/tide-tables-print-shop-sold/" rel="alternate" type="text/html" title="We sold the tide tables print shop" /><published>2025-09-30T00:00:00+00:00</published><updated>2025-09-30T00:00:00+00:00</updated><id>/previews/memo/2025/09/30/tide-tables-print-shop-sold</id><content type="html" xml:base="/previews/memo/2025/09/30/tide-tables-print-shop-sold/"><![CDATA[<p>The print shop was my first business. It now belongs to the printer down
+the road, who was doing most of the work anyway.</p>]]></content><author><name>Rowan Vale</name></author><category term="sold" /><category term="tide tables" /><summary type="html"><![CDATA[Five years, four thousand tables, and a happy new owner.]]></summary></entry><entry><title type="html">Pricing for harbour masters</title><link href="/previews/memo/2025/07/12/pricing-for-harbour-masters/" rel="alternate" type="text/html" title="Pricing for harbour masters" /><published>2025-07-12T00:00:00+00:00</published><updated>2025-07-12T00:00:00+00:00</updated><id>/previews/memo/2025/07/12/pricing-for-harbour-masters</id><content type="html" xml:base="/previews/memo/2025/07/12/pricing-for-harbour-masters/"><![CDATA[<p>Small harbours are busy for four months a year. A monthly fee would cost
+them money all winter, so we charge a small fee per booking instead.</p>]]></content><author><name>Rowan Vale</name></author><category term="pricing" /><summary type="html"><![CDATA[Why Moorings charges per booking, not per month.]]></summary></entry><entry><title type="html">Monthly update: March</title><link href="/previews/memo/2025/04/01/monthly-update-march/" rel="alternate" type="text/html" title="Monthly update: March" /><published>2025-04-01T00:00:00+00:00</published><updated>2025-04-01T00:00:00+00:00</updated><id>/previews/memo/2025/04/01/monthly-update-march</id><content type="html" xml:base="/previews/memo/2025/04/01/monthly-update-march/"><![CDATA[<p>Twelve harbours joined in March. Refunds are now one click. It rained on
+twenty-six days.</p>]]></content><author><name>Rowan Vale</name></author><category term="updates" /><summary type="html"><![CDATA[Twelve new harbours, one new feature, and a lot of rain.]]></summary></entry><entry><title type="html">Why we do not take investment</title><link href="/previews/memo/2024/12/10/why-we-bootstrap/" rel="alternate" type="text/html" title="Why we do not take investment" /><published>2024-12-10T00:00:00+00:00</published><updated>2024-12-10T00:00:00+00:00</updated><id>/previews/memo/2024/12/10/why-we-bootstrap</id><content type="html" xml:base="/previews/memo/2024/12/10/why-we-bootstrap/"><![CDATA[<p>Our customers are small and so are we. Growing at their speed keeps us
+close to them.</p>]]></content><author><name>Rowan Vale</name></author><category term="company" /><summary type="html"><![CDATA[A short note on growing slowly on purpose.]]></summary></entry></feed>

@@ -118,6 +118,34 @@ describe('generated catalog', () => {
     }
   });
 
+  test('every link inside a preview opens an exported page', () => {
+    const missing: string[] = [];
+    for (const theme of THEMES) {
+      const root = join(PREVIEWS, theme.id);
+      const pages = readdirSync(root, { recursive: true, encoding: 'utf8' }).filter((file) => file.endsWith('index.html'));
+      for (const page of pages) {
+        const html = readFileSync(join(root, page), 'utf8');
+        for (const [, href] of html.matchAll(/<a [^>]*href="(\/previews\/[^"#?]*)/gu)) {
+          const path = href.endsWith('/') ? `${href}index.html` : href;
+          if (!existsSync(join(PREVIEWS, '..', path))) missing.push(`${theme.id}/${page} -> ${href}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  test('summaries and option labels avoid the jargon the template lint bans', () => {
+    const jargon = /\b(kicker|measure|markdown|mono|sans|sticky|centred|colour|grey|programme|catalogue)\b/iu;
+    const offenders: string[] = [];
+    for (const theme of THEMES) {
+      const strings = [theme.summary, ...theme.tweaks.flatMap((tweak) => [tweak.label,
+        ...('options' in tweak ? tweak.options.map((option) => option.label) : []),
+        ...('presets' in tweak ? tweak.presets.map((preset) => preset.label) : [])])];
+      for (const text of strings) if (jargon.test(text)) offenders.push(`${theme.id}: ${text}`);
+    }
+    expect(offenders).toEqual([]);
+  });
+
   test('themes are sorted by id and classic is the default', () => {
     const ids = THEMES.map((theme) => theme.id);
     expect(ids).toEqual([...ids].sort());

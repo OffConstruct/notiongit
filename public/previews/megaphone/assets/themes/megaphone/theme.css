@@ -137,7 +137,8 @@ html[data-ink-cta="off"] .mgp-band { display: none; }
 .mgp-textlink { font-weight: 600; }
 
 /* Hero: the claim */
-.mgp-hero { display: flex; align-items: flex-end; min-height: min(calc(100vh - 4rem), 52rem); min-height: min(calc(100svh - 4rem), 52rem); padding-block: 4rem; }
+/* Full screen means 80% of the screen, with the claim centered in it, so no empty band sits above the headline. */
+.mgp-hero { display: flex; align-items: center; min-height: min(80vh, 52rem); min-height: min(80svh, 52rem); padding-block: 4rem; }
 html[data-ink-hero-size="large"] .mgp-hero { min-height: min(70vh, 36rem); min-height: min(70svh, 36rem); }
 html[data-ink-hero-size="compact"] .mgp-hero { min-height: 0; padding-block: 5rem 4rem; }
 .mgp-id { display: flex; align-items: center; gap: 1rem; margin: 0 0 2rem; }
@@ -173,7 +174,7 @@ html:not([data-ink-marquee="name"]) [data-variant="marquee:name"] { display: non
 
 /* Numbered sections */
 .mgp-home { counter-reset: mgp-sec; }
-.mgp-sec { counter-increment: mgp-sec; padding-block: 6rem; border-top: 1px solid var(--mgp-rule); }
+.mgp-sec { counter-increment: mgp-sec; padding-block: clamp(4rem, 2rem + 4vw, 7rem); border-top: 1px solid var(--mgp-rule); }
 .mgp-sec-head { display: flex; align-items: flex-end; gap: 1.5rem; margin: 0 0 3rem; letter-spacing: 0.1em; }
 .mgp-num::before {
   content: counter(mgp-sec, decimal-leading-zero);
@@ -227,7 +228,7 @@ html[data-ink-numbered="off"] .mgp-row-link { grid-template-columns: minmax(0, 1
 .mgp-more { margin: 2rem 0 0; }
 
 /* Statement band and the final call to action */
-.mgp-statement { padding-block: 8rem; border-top: 1px solid var(--mgp-rule); }
+.mgp-statement { padding-block: clamp(4rem, 2rem + 4vw, 7rem); border-top: 1px solid var(--mgp-rule); }
 .mgp-statement-text {
   max-width: 22ch; margin: 0;
   font-family: var(--ink-font-display); font-size: clamp(2.25rem, 1rem + 4vw, 3.75rem); line-height: 1;
@@ -362,7 +363,7 @@ sup a, .reversefootnote { font-weight: 700; text-decoration: none; }
   .mgp-wrap, .container { width: min(100% - 2rem, 80rem); }
   .mgp-header-inner { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "mark cta" "nav nav"; }
   .mgp-nav { justify-content: flex-start; gap: 0 1.25rem; }
-  .mgp-hero { min-height: min(calc(100svh - 7rem), 44rem); padding-block: 3rem; }
+  .mgp-hero { min-height: 0; padding-block: 2.5rem 3rem; }
   .mgp-claim { margin-bottom: 2rem; }
   .mgp-actions { gap: 1rem 1.5rem; }
   .mgp-sec { padding-block: 4rem; }

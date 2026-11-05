@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="/previews/workbench/feed.xml" rel="self" type="application/atom+xml" /><link href="/previews/workbench/" rel="alternate" type="text/html" /><updated>2026-01-01T00:00:00+00:00</updated><id>/previews/workbench/feed.xml</id><title type="html">Rowan Vale</title><subtitle>A personal website, written in Notion.</subtitle><author><name>Rowan Vale</name><email></email></author><entry><title type="html">Tidewatch 2.0 is out</title><link href="/previews/workbench/2026/03/04/tidewatch-2/" rel="alternate" type="text/html" title="Tidewatch 2.0 is out" /><published>2026-03-04T00:00:00+00:00</published><updated>2026-03-04T00:00:00+00:00</updated><id>/previews/workbench/2026/03/04/tidewatch-2</id><content type="html" xml:base="/previews/workbench/2026/03/04/tidewatch-2/"><![CDATA[<p>Tidewatch 2.0 predicts a full year of tides in under a second, about ten
+times faster than 1.x. Setup is now one command, and the new guide walks a
+harbour office through its first table.</p>
+
+<h2 id="what-changed">What changed</h2>
+
+<ul>
+  <li>A new prediction engine, rewritten in Rust.</li>
+  <li>One install command for every platform.</li>
+  <li>Clear error messages when survey data is missing.</li>
+</ul>
+
+<p>Thank you to the forty contributors who made this release.</p>]]></content><author><name>Rowan Vale</name></author><category term="releases" /><category term="tidewatch" /><summary type="html"><![CDATA[Faster predictions, a simpler setup and a new guide for harbour offices.]]></summary></entry><entry><title type="html">The harbour at low tide, as a dataset</title><link href="/previews/workbench/2026/02/14/the-harbour-at-low-tide/" rel="alternate" type="text/html" title="The harbour at low tide, as a dataset" /><published>2026-02-14T00:00:00+00:00</published><updated>2026-02-14T00:00:00+00:00</updated><id>/previews/workbench/2026/02/14/the-harbour-at-low-tide</id><content type="html" xml:base="/previews/workbench/2026/02/14/the-harbour-at-low-tide/"><![CDATA[<p>Twice a day the water leaves and the harbour shows its bones. For a year I
+logged every low tide with a cheap sensor on the second mooring post.</p>
+
+<p>The readings disagreed with my own predictions by up to eleven minutes.
+The fault was mine: a rounding error that had lived in the code for three
+years. The fix was one line; finding it took a winter.</p>]]></content><author><name>Rowan Vale</name></author><category term="data" /><category term="tidewatch" /><summary type="html"><![CDATA[What a year of low-water measurements taught me about the harbour, and about my own code.]]></summary></entry><entry><title type="html">Keeping a commonplace book in plain text</title><link href="/previews/workbench/2025/11/03/keeping-a-commonplace-book/" rel="alternate" type="text/html" title="Keeping a commonplace book in plain text" /><published>2025-11-03T00:00:00+00:00</published><updated>2025-11-03T00:00:00+00:00</updated><id>/previews/workbench/2025/11/03/keeping-a-commonplace-book</id><content type="html" xml:base="/previews/workbench/2025/11/03/keeping-a-commonplace-book/"><![CDATA[<p>A commonplace book is a notebook of things worth keeping: commands, error
+messages, quotations, the name of a bolt. I have kept mine in plain text
+files for twelve years.<sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup> This is how it works.</p>
+
+<h2 id="the-rules">The rules</h2>
+
+<ol>
+  <li>Write the date before anything else.</li>
+  <li>Copy the source with every note, even a page number.</li>
+  <li>Never delete an entry; cross it out instead.</li>
+</ol>
+
+<p><strong>Files</strong> - one text file per month, named by date.</p>
+
+<p><strong>Index</strong> - a list of subjects at the top of each file.</p>
+
+<h2 id="a-worked-example">A worked example</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Subject</th>
+      <th>Files</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Tides</td>
+      <td>2024-03, 2025-01</td>
+      <td>survey formats</td>
+    </tr>
+    <tr>
+      <td>Rust</td>
+      <td>2025-06</td>
+      <td>borrow checker notes</td>
+    </tr>
+    <tr>
+      <td>Bread</td>
+      <td>2023-11</td>
+      <td>a recipe from a neighbour</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <p>Write it down the first time, or look it up forever.</p>
+</blockquote>
+
+<p>When the notes moved to a computer I wrote a tiny script to rebuild the index:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">pathlib</span><span class="p">,</span> <span class="n">re</span>
+
+<span class="n">index</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">note</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pathlib</span><span class="p">.</span><span class="n">Path</span><span class="p">(</span><span class="s">"notes"</span><span class="p">).</span><span class="n">glob</span><span class="p">(</span><span class="s">"*.txt"</span><span class="p">)):</span>
+    <span class="k">for</span> <span class="n">subject</span> <span class="ow">in</span> <span class="n">re</span><span class="p">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s">"^# (.+)$"</span><span class="p">,</span> <span class="n">note</span><span class="p">.</span><span class="n">read_text</span><span class="p">(),</span> <span class="n">re</span><span class="p">.</span><span class="n">M</span><span class="p">):</span>
+        <span class="n">index</span><span class="p">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="p">[]).</span><span class="n">append</span><span class="p">(</span><span class="n">note</span><span class="p">.</span><span class="n">stem</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:1" role="doc-endnote">
+      <p>Before that, a paper notebook that I still keep for sketches. <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+  </ol>
+</div>]]></content><author><name>Rowan Vale</name></author><category term="notes" /><category term="tools" /><summary type="html"><![CDATA[How I keep twelve years of notes in plain text files, with the small script that indexes them.]]></summary></entry><entry><title type="html">A tiny cache for slow harbour Wi-Fi</title><link href="/previews/workbench/2025/09/12/a-tiny-cache-for-slow-wifi/" rel="alternate" type="text/html" title="A tiny cache for slow harbour Wi-Fi" /><published>2025-09-12T00:00:00+00:00</published><updated>2025-09-12T00:00:00+00:00</updated><id>/previews/workbench/2025/09/12/a-tiny-cache-for-slow-wifi</id><content type="html" xml:base="/previews/workbench/2025/09/12/a-tiny-cache-for-slow-wifi/"><![CDATA[<p>The ferry terminal has one Wi-Fi access point and four hundred passengers.
+I added a small offline cache to the timetable page so it keeps working
+when the connection drops. It took forty lines and saved a lot of
+shouting at the ticket desk.</p>]]></content><author><name>Rowan Vale</name></author><category term="web" /><category term="notes" /><summary type="html"><![CDATA[The ferry terminal's Wi-Fi drops every few minutes, so the timetable page now works offline.]]></summary></entry><entry><title type="html">Five years of maintaining an open-source library</title><link href="/previews/workbench/2025/06/20/five-years-of-maintaining/" rel="alternate" type="text/html" title="Five years of maintaining an open-source library" /><published>2025-06-20T00:00:00+00:00</published><updated>2025-06-20T00:00:00+00:00</updated><id>/previews/workbench/2025/06/20/five-years-of-maintaining</id><content type="html" xml:base="/previews/workbench/2025/06/20/five-years-of-maintaining/"><![CDATA[<p>Tidewatch turned five this spring. Here is what I learned, in the order I
+learned it.</p>
+
+<ol>
+  <li>Say no to features early, kindly and in writing.</li>
+  <li>Write the guide before the code.</li>
+  <li>Take holidays. The library will survive.</li>
+</ol>]]></content><author><name>Rowan Vale</name></author><category term="open source" /><category term="tidewatch" /><summary type="html"><![CDATA[What I would tell myself on day one: say no early, write the docs first, and take holidays.]]></summary></entry><entry><title type="html">Why I still write tests first</title><link href="/previews/workbench/2025/03/02/why-i-write-tests-first/" rel="alternate" type="text/html" title="Why I still write tests first" /><published>2025-03-02T00:00:00+00:00</published><updated>2025-03-02T00:00:00+00:00</updated><id>/previews/workbench/2025/03/02/why-i-write-tests-first</id><content type="html" xml:base="/previews/workbench/2025/03/02/why-i-write-tests-first/"><![CDATA[<p>Writing the test first makes me decide what the code should do before I
+decide how. It is slower on Monday and much faster by Friday.</p>]]></content><author><name>Rowan Vale</name></author><category term="testing" /><summary type="html"><![CDATA[A short note on the habit that has saved me the most time.]]></summary></entry><entry><title type="html">Porting the tide math to Rust</title><link href="/previews/workbench/2024/11/15/porting-tide-math-to-rust/" rel="alternate" type="text/html" title="Porting the tide math to Rust" /><published>2024-11-15T00:00:00+00:00</published><updated>2024-11-15T00:00:00+00:00</updated><id>/previews/workbench/2024/11/15/porting-tide-math-to-rust</id><content type="html" xml:base="/previews/workbench/2024/11/15/porting-tide-math-to-rust/"><![CDATA[<p>The new core is ten times faster, but the old Python version stays as the
+reference. Every release checks that both give the same answers for a
+thousand harbours.</p>]]></content><author><name>Rowan Vale</name></author><category term="rust" /><category term="tidewatch" /><summary type="html"><![CDATA[Notes from rewriting the prediction core, and why the old version stays.]]></summary></entry></feed>

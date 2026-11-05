@@ -1,0 +1,38 @@
+/* Shared by every theme and loaded after its theme.css. Keep this file small:
+   it holds only the rules every theme must follow. docs/themes/README.md,
+   "Shared rules", explains each one. */
+
+/* Phones: the main menu is one row that scrolls sideways, never a wrapped
+   second row with one orphaned item, and every link is a 44px tap target. */
+@media (max-width: 599.98px) {
+  nav[aria-label="Main navigation"] {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    white-space: nowrap;
+  }
+  nav[aria-label="Main navigation"] > :is(ul, ol),
+  nav[aria-label="Main navigation"]:not(:has(> :is(ul, ol))) {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+  nav[aria-label="Main navigation"] > :is(ul, ol) {
+    width: max-content;
+  }
+  nav[aria-label="Main navigation"] :is(li, a) {
+    flex: none;
+  }
+  nav[aria-label="Main navigation"] a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* Footnote links are also underlined, so they never rely on color alone. */
+.footnotes a,
+a.footnote {
+  text-decoration-line: underline;
+}

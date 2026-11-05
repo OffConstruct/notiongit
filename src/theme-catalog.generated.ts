@@ -3,7 +3,7 @@
 import type { ThemeCatalogData } from './theme-catalog';
 
 export const THEME_CATALOG_DATA: ThemeCatalogData = {
-  "templateCommit": "1f60443fe72cfd4abcac459ccd249ca60f226440",
+  "templateCommit": "f57f9173b598c2411783c014e82c8dacb7163389",
   "templateDirty": false,
   "categories": [
     {
@@ -56,8 +56,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "almanac",
       "name": "Almanac",
       "version": "1.0.0",
-      "summary": "The issue shelf: numbered issues on cream, colored by topic, with a tag bar and one subscribe button.",
-      "description": "Your writing as a shelf of issues. A short intro and subscribe button, the latest featured post as a wide numbered slab, then a grid of cards where posts without a cover become solid blocks of ink colored by topic. A tag bar with counts makes series browsable. Set in Manrope, for curators, teachers and series writers.",
+      "summary": "For newsletters and series: a short intro, a subscribe button and your posts as colorful numbered issues.",
+      "description": "Your writing as a shelf of issues. A short intro and a subscribe button come first, then your newest featured post as a large numbered issue, then every other post as a colorful card. Posts without a picture become solid blocks of color, one color per topic, and readers can browse by topic. For newsletter writers, teachers and anyone who writes in series.",
       "categories": [
         "marketing",
         "educators"
@@ -98,7 +98,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Light (cream)"
+              "label": "Light"
             },
             {
               "value": "dark",
@@ -143,7 +143,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -198,15 +198,15 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "archive",
-              "label": "Four inks by topic"
+              "label": "Four colors by topic"
             },
             {
               "value": "ink",
-              "label": "One dark ink"
+              "label": "One dark color"
             },
             {
               "value": "accent",
-              "label": "Button color"
+              "label": "Same as the button"
             }
           ]
         },
@@ -218,7 +218,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "ink",
-              "label": "Covers and ink blocks"
+              "label": "Covers and color blocks"
             },
             {
               "value": "cover",
@@ -264,8 +264,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "anamorph",
       "name": "Anamorph",
       "version": "1.0.0",
-      "summary": "The title card: one letterboxed frame, your name split across it, and the work as a reel of wide bands.",
-      "description": "A cinematic home on warm print-black. The first screen is one frame in a 2.39:1 letterbox with your name split to the edges in condensed capitals; below it, a short lede and every post as a numbered full-width band with its title over the frame. For directors, cinematographers and adventure shooters.",
+      "summary": "For filmmakers and photographers: one wide cinematic photo with your name across it, then your work in wide bands.",
+      "description": "A cinematic home on deep black. The first screen is one wide, film-shaped photo with your name in tall capitals across it. Below it, a short intro and each post as a full-width band with its title over the picture. For filmmakers, cinematographers and adventure photographers.",
       "categories": [
         "photographers",
         "musicians"
@@ -327,7 +327,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Accent",
+          "label": "Accent color",
           "role": "text",
           "default": "safelight",
           "custom": true,
@@ -361,32 +361,32 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "font",
           "type": "font",
-          "label": "Title face",
+          "label": "Fonts",
           "default": "antonio"
         },
         {
           "key": "aspect",
           "type": "select",
-          "label": "Frame",
+          "label": "Photo shape",
           "default": "scope",
           "options": [
             {
               "value": "scope",
-              "label": "Scope 2.39:1"
+              "label": "Extra wide (2.39:1)"
             },
             {
               "value": "wide",
-              "label": "Widescreen 16:9"
+              "label": "Wide (16:9)"
             },
             {
               "value": "academy",
-              "label": "Academy 4:3"
+              "label": "Classic (4:3)"
             },
             {
               "value": "natural",
@@ -437,12 +437,12 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "reel",
           "type": "select",
-          "label": "Work list",
+          "label": "Your work",
           "default": "bands",
           "options": [
             {
               "value": "bands",
-              "label": "Full-width bands"
+              "label": "Full-width rows"
             },
             {
               "value": "caption",
@@ -468,8 +468,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "atelier",
       "name": "Atelier",
       "version": "1.0.0",
-      "summary": "The studio journal: an arch portrait, your bio read like a wall label, then work and dated notes.",
-      "description": "For makers who post often: potters, printmakers, daily sketchers. The home page sets your bio large beside an arch-shaped portrait, with a line pointing to your newest post. Selected work hangs in a masonry wall at its true proportions, and every post sits in a month-by-month journal with a large day numeral.",
+      "summary": "For artists and makers: an arched portrait, a short bio, then your work and dated journal notes.",
+      "description": "For makers who post often: potters, printmakers, daily sketchers. Your bio sits large beside an arch-shaped portrait, with a pointer to your newest post. Selected work hangs as a wall of pictures at their real shapes, and every post sits in a month-by-month journal with a large day number.",
       "categories": [
         "artists"
       ],
@@ -519,18 +519,18 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Bone"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Kiln"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Glaze color",
+          "label": "Accent color",
           "role": "text",
           "default": "cobalt",
           "custom": true,
@@ -558,13 +558,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "font",
           "type": "font",
-          "label": "Typefaces",
+          "label": "Fonts",
           "default": "fraunces"
         },
         {
@@ -575,7 +575,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "masonry",
-              "label": "Masonry, true proportions"
+              "label": "Staggered, true shapes"
             },
             {
               "value": "square",
@@ -641,8 +641,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "byline",
       "name": "Byline",
       "version": "1.0.1",
-      "summary": "The front page: a broadsheet masthead, a lead story beside your bio, and clip rows grouped by beat.",
-      "description": "A newspaper front page and clip file for journalists, critics and columnists. Your name sits between double rules, the latest featured piece leads beside an About the author box, and every tag becomes a section of headline rows. Pieces published elsewhere name their outlet and link out.",
+      "summary": "For journalists and writers: a newspaper-style front page with your lead story, bio and stories grouped by topic.",
+      "description": "A newspaper front page and clip file. Your name sits between double lines like a masthead, your latest featured story leads beside an About the author box, and each topic becomes its own section of headlines. Stories you published elsewhere name the outlet and link to it. For journalists, critics and columnists.",
       "categories": [
         "writers"
       ],
@@ -693,7 +693,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Kicker color",
+          "label": "Label color",
           "role": "text",
           "default": "red",
           "custom": true,
@@ -727,7 +727,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -785,7 +785,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "kicker",
           "type": "select",
-          "label": "Kicker above headlines",
+          "label": "Label above headlines",
           "default": "tag",
           "options": [
             {
@@ -832,8 +832,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "cathode",
       "name": "Cathode",
       "version": "1.0.0",
-      "summary": "The source view: a huge wide name, JetBrains Mono everywhere else, markdown marks in vermilion.",
-      "description": "Dark first. Your name is set huge in wide Archivo; everything else is JetBrains Mono, with the markdown it was written in left visible in one hot accent. The bio splits into labeled columns at its ## headings, and posts run as a stream of titles, dates, tags and one-line excerpts.",
+      "summary": "For developers: your name in huge letters on a dark screen, then your posts in a code-style font.",
+      "description": "Dark and bold. Your name fills the top of the screen in huge letters, and everything else looks like code on a terminal, with one bright accent color. Your bio splits into labeled blocks, and your posts run as a list of titles, dates, topics and one-line summaries. For developers and technical writers.",
       "categories": [
         "developers"
       ],
@@ -894,7 +894,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Accent",
+          "label": "Accent color",
           "role": "text",
           "default": "vermilion",
           "custom": true,
@@ -928,19 +928,19 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "font",
           "type": "font",
-          "label": "Name typeface",
+          "label": "Fonts",
           "default": "wide"
         },
         {
           "key": "marks",
           "type": "boolean",
-          "label": "Show markdown marks",
+          "label": "Show # signs before headings",
           "default": true
         },
         {
@@ -951,7 +951,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "columns",
-              "label": "Columns at each ## heading"
+              "label": "One column per section"
             },
             {
               "value": "prose",
@@ -989,8 +989,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "chalkboard",
       "name": "Chalkboard",
       "version": "1.0.0",
-      "summary": "The lesson board: a slate ground, one highlighter and lesson cards in Atkinson Hyperlegible.",
-      "description": "A slate board with one highlighter. Your tagline is the headline, marked like the key line on a board, beside your portrait. Readers pick a topic from your tags, start with one featured lesson, then browse lesson cards. Set in a face drawn for low-vision readers. For course creators and online tutors.",
+      "summary": "For teachers: a dark board with your portrait, easy-to-read lesson cards and topics to pick from.",
+      "description": "A dark board with one highlighter color. Your tagline is the headline, marked like the key line on a board, next to your portrait. Readers pick a topic, start with one featured lesson, then browse lesson cards, all in a typeface made to be easy to read. For teachers, course creators and tutors.",
       "categories": [
         "educators",
         "developers"
@@ -1031,18 +1031,18 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Cream"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Board"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Highlighter",
+          "label": "Highlight color",
           "role": "surface",
           "default": "yellow",
           "custom": false,
@@ -1073,7 +1073,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -1156,11 +1156,11 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "classic",
       "name": "Classic",
       "version": "1.0.0",
-      "summary": "The original InkDrafts look: IBM Plex Sans, a quiet gray ground and one blue accent.",
-      "description": "A centred name and tagline on the home page, card-style post lists, Space Mono headings and an automatic dark mode. Every site starts here, and any site without a theme setting keeps this look.",
+      "summary": "For anyone: your photo, a short bio, your latest posts and links, on a calm gray page with one blue accent.",
+      "description": "Your photo, name and tagline at the top, a short bio, your latest posts with their dates, and your links, on a calm gray page with one blue accent. It switches to dark mode by itself when a visitor's device does. Every site starts here, and a site with no design chosen keeps this look.",
       "categories": [
-        "developers",
-        "writers"
+        "writers",
+        "developers"
       ],
       "author": {
         "name": "InkDrafts",
@@ -1209,7 +1209,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Accent",
+          "label": "Accent color",
           "role": "text",
           "default": "blue",
           "custom": true,
@@ -1243,7 +1243,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         }
       ],
@@ -1254,8 +1254,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "confetti",
       "name": "Confetti",
       "version": "1.0.0",
-      "summary": "The panel sheet: your work in flat color panels split by ink gutters, your name as a mast.",
-      "description": "For illustrators who like color. The home page says your bio out loud, sets your name huge at the foot of the first screen, then lays your posts out as a sheet of saturated panels. Posts without a cover become solid color panels, each post page opens on a band of color, and every artwork sits uncropped inside its field.",
+      "summary": "For illustrators and artists: your work as bright color panels on one sheet, with your name on top.",
+      "description": "For illustrators who love color. Your bio comes first, your name sits huge at the bottom of the first screen, and your posts follow as a sheet of bright color panels. Posts without a picture become solid color panels, and every artwork is shown whole, never cropped.",
       "categories": [
         "artists"
       ],
@@ -1295,11 +1295,11 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Cream"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Ink"
+              "label": "Dark"
             }
           ]
         },
@@ -1334,7 +1334,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -1357,23 +1357,23 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "mono",
-              "label": "Paper greys"
+              "label": "Paper grays"
             }
           ]
         },
         {
           "key": "gutter",
           "type": "select",
-          "label": "Gutters",
+          "label": "Between panels",
           "default": "ink",
           "options": [
             {
               "value": "ink",
-              "label": "Ink rules"
+              "label": "Black lines"
             },
             {
               "value": "none",
-              "label": "Panels touch"
+              "label": "No space"
             }
           ]
         },
@@ -1400,16 +1400,16 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "density",
           "type": "select",
-          "label": "Sheet density",
+          "label": "Panels per row",
           "default": "roomy",
           "options": [
             {
               "value": "roomy",
-              "label": "Roomy, four across"
+              "label": "Four, roomy"
             },
             {
               "value": "packed",
-              "label": "Packed, six across"
+              "label": "Six, packed"
             }
           ]
         },
@@ -1441,8 +1441,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "crate",
       "name": "Crate",
       "version": "0.1.0",
-      "summary": "A numbered crate of jewel cases on chrome: every release or episode as a tile, browsable by tag.",
-      "description": "Your back catalogue as numbered tiles on a chrome-silver ground. The home page leads with the latest featured episode or release, then a grid of square covers with No. badges, and an Explore panel of every tag with its count. Switch the archive to a compact table when it runs to hundreds. For podcasters and prolific producers.",
+      "summary": "For musicians and podcasters: every release or episode as a numbered cover tile, sorted by tag.",
+      "description": "Your releases or episodes as numbered tiles on a silver background. Your newest featured release or episode leads, then square covers with numbers, then a panel of every topic with how many posts it has. When the list grows to hundreds, switch it to a compact table. For musicians, podcasters and busy producers.",
       "categories": [
         "musicians"
       ],
@@ -1482,11 +1482,11 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Chrome"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Night"
+              "label": "Dark"
             }
           ]
         },
@@ -1531,13 +1531,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "density",
           "type": "select",
-          "label": "Archive",
+          "label": "Release list",
           "default": "tiles",
           "options": [
             {
@@ -1557,7 +1557,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "numbering",
           "type": "boolean",
-          "label": "No. badges",
+          "label": "Number badges",
           "default": true
         },
         {
@@ -1584,7 +1584,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "gummy",
-              "label": "Gummy"
+              "label": "Extra round"
             },
             {
               "value": "soft",
@@ -1599,7 +1599,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "edge",
           "type": "boolean",
-          "label": "Iridescent edge on the featured tile",
+          "label": "Shiny edge on the featured release",
           "default": true
         }
       ],
@@ -1610,8 +1610,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "dispatch",
       "name": "Dispatch",
       "version": "1.0.0",
-      "summary": "The letter: a centered serif claim, one subscribe button and a year-by-year archive.",
-      "description": "A home page written like a short letter. Your tagline is the headline, one button sends readers to your newsletter, your bio reads as the letter itself, then a numbered Start here list of featured posts and a quiet year index. Set in Newsreader with mono dates, for newsletter writers.",
+      "summary": "For newsletter writers: one centered headline, a subscribe button and your letters listed by year.",
+      "description": "A home page written like a short letter. Your tagline is the headline, one button sends readers to your newsletter, your bio reads as the letter itself, then a short Start here list of featured posts and a quiet list of everything by year. For newsletter writers.",
       "categories": [
         "marketing",
         "writers"
@@ -1697,7 +1697,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -1780,8 +1780,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "dossier",
       "name": "Dossier",
       "version": "1.0.0",
-      "summary": "The spec-sheet CV: Plex Sans and Mono on paper, a sticky identity column, one orange dot.",
-      "description": "An online CV laid out like a labelled spec sheet. A sticky column holds your portrait, role and contact details; your bio's headings become mono gutter labels (Now, Previously, Publications). Writing is listed as dated spec rows, and one orange dot marks featured work.",
+      "summary": "For consultants and job seekers: a one-page CV with your profile on the side and your work listed by date.",
+      "description": "An online CV laid out like a neat fact sheet. Your portrait, role and contact details stay in view on the side while visitors scroll. The headings in your bio become labels such as Now, Previously and Publications, your work is listed by date, and one orange dot marks featured pieces. For consultants, freelancers and job seekers.",
       "categories": [
         "professionals"
       ],
@@ -1821,18 +1821,18 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Paper"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Graphite"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Signal color",
+          "label": "Accent color",
           "role": "text",
           "default": "orange",
           "custom": true,
@@ -1866,7 +1866,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -1893,15 +1893,15 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "split",
-              "label": "Identity left, sheet right"
+              "label": "Profile left, CV right"
             },
             {
               "value": "split-right",
-              "label": "Sheet left, identity right"
+              "label": "CV left, profile right"
             },
             {
               "value": "single",
-              "label": "Single column"
+              "label": "One column"
             }
           ]
         },
@@ -1977,8 +1977,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "halo",
       "name": "Halo",
       "version": "0.1.0",
-      "summary": "A club poster: giant wide caps, every cover tinted in one signal color, Dates and Releases.",
-      "description": "A dark poster home with your name in wide capitals, your newest release standing on a horizon of color bands, then Dates from posts tagged live, a strip of releases and your links set huge. Every cover is pushed into a two-tone of black and one signal color, so any artwork fits. For DJs and electronic producers.",
+      "summary": "For bands and DJs: a concert poster with your name in giant letters, your latest releases and upcoming dates.",
+      "description": "A dark concert poster. Your name sits across the top in wide capitals, your newest release stands on bands of color, then your upcoming dates, a row of releases and your links set large. Every cover is shown in black and one bright color, so any artwork fits. Tag a post live to list it under Dates. For bands, DJs and electronic producers.",
       "categories": [
         "musicians"
       ],
@@ -2018,18 +2018,18 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Bone"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Black"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Signal color",
+          "label": "Accent color",
           "role": "text",
           "default": "red",
           "custom": true,
@@ -2063,7 +2063,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -2089,7 +2089,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "horizon",
           "type": "boolean",
-          "label": "Horizon bands",
+          "label": "Horizon stripes",
           "default": true
         },
         {
@@ -2100,7 +2100,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "center",
-              "label": "Giant, centred"
+              "label": "Giant, centered"
             },
             {
               "value": "left",
@@ -2156,8 +2156,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "issue",
       "name": "Issue",
       "version": "1.0.1",
-      "summary": "The magazine cover: a cream sheet on a spot-color field, a Gloock masthead and numbered features.",
-      "description": "Every visit lands on the current issue. Your name is the masthead, the latest featured post is the cover story, and the archive is a numbered feature list in two columns. The color field carries the page with or without images. For newsletter writers, poets and zine makers.",
+      "summary": "For writers: a magazine cover with a bold title, your cover story and numbered features.",
+      "description": "Every visit lands on your latest issue, like a magazine cover. Your name is the title, your newest featured post is the cover story, and everything else is a numbered list of features in two columns. The strong background color carries the page with or without pictures. For newsletter writers, poets and zine makers.",
       "categories": [
         "writers"
       ],
@@ -2246,7 +2246,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -2292,7 +2292,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "masthead",
           "type": "select",
-          "label": "Masthead size",
+          "label": "Title size",
           "default": "poster",
           "options": [
             {
@@ -2339,8 +2339,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "keynote",
       "name": "Keynote",
       "version": "1.0.0",
-      "summary": "The speaker's programme: a portrait on a color field, a Bodoni promise and a numbered running order.",
-      "description": "Set like a printed event programme. Your portrait sits on a color field beside a dark panel that holds your promise in Bodoni. Your pages follow as a numbered running order, then your writing as a lead story and a two-column list. One contact button. For coaches, speakers and workshop leaders.",
+      "summary": "For speakers and coaches: your portrait on a color panel, one big promise and a numbered list of your talks.",
+      "description": "Laid out like a printed event program. Your portrait sits on a color panel beside a dark panel that holds your one big promise. Your pages follow as a numbered running order, then your writing as a lead story and a list, with one contact button. For coaches, speakers and workshop leaders.",
       "categories": [
         "educators",
         "professionals"
@@ -2381,18 +2381,18 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Bone"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Ink"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Accent",
+          "label": "Accent color",
           "role": "text",
           "default": "rust",
           "custom": false,
@@ -2426,7 +2426,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -2476,7 +2476,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "show_programme",
           "type": "boolean",
-          "label": "List your pages as a programme",
+          "label": "List your pages as a program",
           "default": true
         },
         {
@@ -2513,8 +2513,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "lattice",
       "name": "Lattice",
       "version": "1.0.0",
-      "summary": "The lab front door: an identity sheet of academic links, then numbered sections on a ruled grid.",
-      "description": "Atkinson Hyperlegible on a 12-column grid. The home opens with an identity sheet (role, research statement, identifiers, photo), then numbered sections: Selected, Writing as a ruled table, an index of your pages with their descriptions, and About. For professors, lab leads and students.",
+      "summary": "For academics and labs: your photo, links to your profiles and papers, then your sections in a neat grid.",
+      "description": "A clear, orderly page made with an easy-to-read typeface. It opens with who you are: your role, a short statement of your research, links to your profiles and papers, and your photo. Numbered sections follow for selected work, writing, your other pages and About. For professors, lab leads and students.",
       "categories": [
         "researchers",
         "educators"
@@ -2566,14 +2566,14 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Institution color",
+          "label": "Accent color",
           "role": "text",
           "default": "blue",
           "custom": true,
           "presets": [
             {
               "value": "blue",
-              "label": "Institutional blue",
+              "label": "Blue",
               "light": "#1f4fa3",
               "dark": "#8fb0f0"
             },
@@ -2600,13 +2600,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "masthead",
           "type": "select",
-          "label": "Identity sheet",
+          "label": "Top section",
           "default": "photo-right",
           "options": [
             {
@@ -2664,7 +2664,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "swatch",
           "type": "boolean",
-          "label": "Accent swatch strip",
+          "label": "Show the color strip",
           "default": true
         }
       ],
@@ -2675,8 +2675,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "lectern",
       "name": "Lectern",
       "version": "1.0.0",
-      "summary": "The syllabus: a course handout in Alegreya with a margin-dated index and sidenotes.",
-      "description": "One calm column set like a well-made course handout: name, italic tagline and bio, a reading-by-topic line built from your tags, then a writing index with dates in the margin. Posts read like lecture notes, with footnotes beside the text on wide screens. For teachers, lecturers and tutors.",
+      "summary": "For teachers and researchers: a course handout with your writing listed by date and notes in the margin.",
+      "description": "One calm column, like a well-made course handout: your name, tagline and bio, a line of topics to read by, then your writing listed with dates in the margin. Posts read like lecture notes, with footnotes beside the text on wide screens. For teachers, lecturers and tutors.",
       "categories": [
         "educators",
         "researchers"
@@ -2717,18 +2717,18 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Paper"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Night"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Ink color",
+          "label": "Accent color",
           "role": "text",
           "default": "oxblood",
           "custom": true,
@@ -2753,7 +2753,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "ink",
-              "label": "Black ink only",
+              "label": "Black only",
               "light": "#1f1c17",
               "dark": "#ece6da"
             }
@@ -2762,7 +2762,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -2817,8 +2817,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "ledger",
       "name": "Ledger",
       "version": "1.0.0",
-      "summary": "The maker's console: a sticky profile beside a grid of ventures with status chips and a mono-dated writing table.",
-      "description": "For indie makers and founders who run several things at once. Dark by default, with hairline panels in the spirit of modern builder tools. Featured posts become venture cells whose first tag is a status chip (live, sold, paused, shut-down), and every post sits in a table with mono dates and tags.",
+      "summary": "For founders and makers: your profile beside your projects, each with its status, and a list of your writing.",
+      "description": "For founders who run several projects at once. Dark by default, with fine lines like a modern dashboard. Featured posts become project cards, and the first topic of each shows as its status, such as live, sold or paused. Every post is listed in a table with its date and topics.",
       "categories": [
         "entrepreneurs",
         "developers"
@@ -2870,7 +2870,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Signal color",
+          "label": "Accent color",
           "role": "text",
           "default": "green",
           "custom": true,
@@ -2898,7 +2898,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -2920,7 +2920,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "ventures_columns",
           "type": "range",
-          "label": "Venture columns",
+          "label": "Project columns",
           "min": 1,
           "max": 3,
           "step": 1,
@@ -2961,11 +2961,11 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "numbered",
-              "label": "Numbered keys"
+              "label": "Numbered"
             },
             {
               "value": "slash",
-              "label": "Slash paths"
+              "label": "With slashes"
             },
             {
               "value": "plain",
@@ -2981,8 +2981,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "letterhead",
       "name": "Letterhead",
       "version": "1.0.0",
-      "summary": "A well-set letter: Newsreader on chamois, a preface, and a numbered table of contents.",
-      "description": "A quiet, print-like site for lawyers, doctors and senior advisers. Your name heads the page like a letterhead, your bio reads as a preface, and your pages and featured writing become a numbered table of contents with dotted leaders. One serif, no bold, one amber rule.",
+      "summary": "For lawyers, doctors and consultants: formal letter paper, a short introduction and a numbered contents list.",
+      "description": "A quiet, formal site that feels like printed letter paper. Your name heads the page, your bio reads as an introduction, and your pages and featured writing form a numbered contents list. One elegant typeface and one amber line. For lawyers, doctors and senior advisers.",
       "categories": [
         "professionals"
       ],
@@ -3043,7 +3043,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Ink for links and rule",
+          "label": "Link and line color",
           "role": "text",
           "default": "amber",
           "custom": true,
@@ -3068,7 +3068,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "ink",
-              "label": "Ink only",
+              "label": "Black only",
               "light": "#1b1b1b",
               "dark": "#e8e4d9"
             }
@@ -3077,13 +3077,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "font",
           "type": "font",
-          "label": "Typeface",
+          "label": "Fonts",
           "default": "newsreader"
         },
         {
@@ -3109,7 +3109,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "letterhead_align",
           "type": "select",
-          "label": "Letterhead",
+          "label": "Top of the page",
           "default": "left",
           "options": [
             {
@@ -3141,7 +3141,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "index_marker",
           "type": "select",
-          "label": "Contents markers",
+          "label": "Contents list shows",
           "default": "numbered",
           "options": [
             {
@@ -3172,8 +3172,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "liner",
       "name": "Liner",
       "version": "0.1.0",
-      "summary": "Liner notes in system type: Now and Dates side by side, then a dated log of everything.",
-      "description": "The inside of a record sleeve, set by the browser. Your links lead the header, the home page pairs your current release with a Dates list built from posts tagged live, and every post sits in a plain dated log. For producers, DJs and bands who want the site to read like a tracklist.",
+      "summary": "For musicians: what you are doing now and upcoming dates side by side, then a dated log of everything.",
+      "description": "The inside of a record sleeve. Your links lead the top of the page, your current release sits beside a list of upcoming dates, and every post is listed in a plain dated log, like a tracklist. Tag a post live to list it under Dates. For producers, DJs and bands.",
       "categories": [
         "musicians"
       ],
@@ -3223,11 +3223,11 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "White"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Black"
+              "label": "Dark"
             }
           ]
         },
@@ -3268,13 +3268,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "font",
           "type": "font",
-          "label": "Type",
+          "label": "Fonts",
           "default": "helvetica"
         },
         {
@@ -3347,8 +3347,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "loupe",
       "name": "Loupe",
       "version": "1.0.0",
-      "summary": "The contact sheet: a tight grid of uncropped frames on a white lightbox, numbered like an edge print.",
-      "description": "Your work as a contact sheet. A header bar with your portrait or monogram, a short bio, the featured frames marked in grease-pencil red, then every post as an uncropped frame with its number and month in mono. Readers can filter by tag and switch to a dated list. For working photographers and photo journals.",
+      "summary": "For photographers: a tight grid of whole, uncropped photos on white, numbered like film frames.",
+      "description": "Your photos as a contact sheet. A top bar with your portrait or initials, a short bio, your featured photos marked in red, then every post as a whole, uncropped photo with its number and month. Visitors can filter by topic or switch to a list by date. For working photographers and photo journals.",
       "categories": [
         "photographers",
         "designers"
@@ -3394,18 +3394,18 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Lightbox"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Lightbox at night"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Grease pencil",
+          "label": "Marker color",
           "role": "text",
           "default": "red",
           "custom": true,
@@ -3433,13 +3433,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "font",
           "type": "font",
-          "label": "Typeface",
+          "label": "Fonts",
           "default": "chivo"
         },
         {
@@ -3465,12 +3465,12 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "plate",
           "type": "select",
-          "label": "Frame treatment",
+          "label": "Photo frames",
           "default": "contain",
           "options": [
             {
               "value": "contain",
-              "label": "Uncropped on a plate"
+              "label": "Whole photo on a border"
             },
             {
               "value": "square",
@@ -3485,7 +3485,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "avatar",
           "type": "select",
-          "label": "Header mark",
+          "label": "Top-left corner",
           "default": "photo",
           "options": [
             {
@@ -3494,7 +3494,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "monogram",
-              "label": "Monogram"
+              "label": "Initials"
             },
             {
               "value": "none",
@@ -3538,8 +3538,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "margin",
       "name": "Margin",
       "version": "1.0.0",
-      "summary": "The quiet column: one 600px measure, two type sizes and a single link color.",
-      "description": "A letter-like home in one narrow column: name and tagline, the bio as prose, then Selected work, Writing and Elsewhere as plain sections. Posts are unruled title and date rows; long reads are set in Newsreader. For product and design engineers whose taste shows in measure and rhythm.",
+      "summary": "For designers and writers: one quiet column with your name, selected work and writing, and one link color.",
+      "description": "A letter-like home in one narrow column: your name and tagline, your bio as plain text, then sections for selected work, writing and links elsewhere. Posts are simple title and date rows, and long reads are set for comfortable reading. For designers and writers whose taste shows in the details.",
       "categories": [
         "designers"
       ],
@@ -3624,22 +3624,22 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "reading_font",
           "type": "select",
-          "label": "Post body face",
+          "label": "Post text style",
           "default": "serif",
           "options": [
             {
               "value": "serif",
-              "label": "Newsreader (serif)"
+              "label": "Bookish"
             },
             {
               "value": "sans",
-              "label": "Inter (sans)"
+              "label": "Clean"
             }
           ]
         },
@@ -3725,8 +3725,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "marquee",
       "name": "Marquee",
       "version": "1.0.0",
-      "summary": "Builder in public: a poster-size name, a highlighted tagline, bold tone cards for featured work and a follow band.",
-      "description": "For makers, coaches and small businesses that sell with type. Your name is set huge in Bricolage Grotesque, the tagline sits under a highlighter, featured posts become loud two-tone cards, and an inverted band asks readers to follow along by RSS or your newsletter link.",
+      "summary": "For founders building in public: your name poster-size, a highlighted tagline and bold cards for featured work.",
+      "description": "For makers, coaches and small businesses that want to be noticed. Your name is set poster-size, your tagline sits under a highlighter stripe, featured posts become bold two-color cards, and a band near the end invites readers to follow along.",
       "categories": [
         "entrepreneurs",
         "marketing"
@@ -3778,7 +3778,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Highlighter",
+          "label": "Highlight color",
           "role": "surface",
           "default": "acid",
           "custom": false,
@@ -3816,7 +3816,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -3838,7 +3838,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "hero_style",
           "type": "select",
-          "label": "Hero",
+          "label": "Top of the home page",
           "default": "name",
           "options": [
             {
@@ -3847,7 +3847,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "statement",
-              "label": "Tagline huge, name as kicker"
+              "label": "Tagline huge, name above it"
             },
             {
               "value": "portrait",
@@ -3863,22 +3863,22 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "alternate",
-              "label": "Alternate ink, indigo and highlighter"
+              "label": "Mixed: black, indigo, highlight"
             },
             {
               "value": "ink",
-              "label": "All ink"
+              "label": "All black"
             },
             {
               "value": "accent",
-              "label": "All highlighter"
+              "label": "All highlight"
             }
           ]
         },
         {
           "key": "subscribe_band",
           "type": "boolean",
-          "label": "Follow band",
+          "label": "Show the follow section",
           "default": true
         },
         {
@@ -3895,8 +3895,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "megaphone",
       "name": "Megaphone",
       "version": "1.0.0",
-      "summary": "The claim: your tagline as a giant condensed headline on warm black, one bright button under it.",
-      "description": "Built around one loud sentence. Your tagline fills the first screen in condensed capitals with a single bright button beneath it, then numbered sections for About, Featured and Latest with oversized numerals, and a statement band from your bio. Dark first, with a cream light mode, for creators and personal brands.",
+      "summary": "For marketers and creators: your tagline as a giant headline on warm black, with one bright button under it.",
+      "description": "Built around one loud sentence. Your tagline fills the first screen in tall capitals with one bright button under it. Numbered sections follow for About, Featured and Latest, then a bold quote from your bio. Dark by default, with a cream light mode. For creators and personal brands.",
       "categories": [
         "marketing",
         "entrepreneurs"
@@ -3937,18 +3937,18 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Light (cream)"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Dark (warm black)"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Signal color",
+          "label": "Accent color",
           "role": "surface",
           "default": "chartreuse",
           "custom": false,
@@ -3986,7 +3986,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -4036,7 +4036,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "marquee",
           "type": "select",
-          "label": "Ticker strip",
+          "label": "Scrolling text strip",
           "default": "off",
           "options": [
             {
@@ -4082,7 +4082,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "statement",
           "type": "boolean",
-          "label": "Statement band",
+          "label": "Show the statement section",
           "default": true
         }
       ],
@@ -4093,8 +4093,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "memo",
       "name": "Memo",
       "version": "1.0.0",
-      "summary": "The operator's letter: a two-tone statement, a bio written as a letter, and a year-hung index in Newsreader.",
-      "description": "For founders whose work speaks for itself. The home page is a letter: your name and tagline as one quiet sentence, your bio, a Start here line built from featured posts, then every post as a title-only index hung on its year. One serif, one accent, no chrome.",
+      "summary": "For founders and writers: a two-part opening line, a bio written as a letter and your posts listed by year.",
+      "description": "For founders whose work speaks for itself. The home page reads like a letter: your name and tagline as one quiet sentence, your bio, a Start here line of featured posts, then every post listed by title under its year. One typeface, one accent color, nothing extra.",
       "categories": [
         "entrepreneurs",
         "writers"
@@ -4146,7 +4146,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Accent",
+          "label": "Accent color",
           "role": "text",
           "default": "oxblood",
           "custom": true,
@@ -4174,7 +4174,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -4220,7 +4220,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "start_here",
           "type": "boolean",
-          "label": "Start here line from featured posts",
+          "label": "Show featured posts as Start here",
           "default": true
         },
         {
@@ -4261,8 +4261,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "plaintext",
       "name": "Plaintext",
       "version": "1.0.0",
-      "summary": "The archive: one serif, one hue, and a year-grouped index of everything you have written.",
-      "description": "Set entirely in Source Serif 4 on a page tinted from a single hue. The home page is your bio followed by two parallel indexes, Writing and Featured; the archive groups posts by year with a tabular date column. For engineers who write rarely, at length, and want it read.",
+      "summary": "For writers who want it simple: one font, one color and a list of everything you have written, by year.",
+      "description": "One typeface on a page tinted with a single color. The home page is your bio, then two lists side by side: Writing and Featured. The archive lists every post by year with its date. For people who write rarely, at length, and want to be read.",
       "categories": [
         "developers",
         "writers"
@@ -4331,13 +4331,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "presets": [
             {
               "value": "hue",
-              "label": "From the page hue",
+              "label": "Match the page tint",
               "light": "#2759a2",
               "dark": "#92bdfb"
             },
             {
               "value": "ink",
-              "label": "Ink (underlined only)",
+              "label": "Black, underlined",
               "light": "#192230",
               "dark": "#e3e8f0"
             },
@@ -4352,13 +4352,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "hue",
           "type": "range",
-          "label": "Page hue",
+          "label": "Page tint",
           "min": 0,
           "max": 360,
           "step": 1,
@@ -4368,7 +4368,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "font",
           "type": "font",
-          "label": "Typeface",
+          "label": "Fonts",
           "default": "serif"
         },
         {
@@ -4425,8 +4425,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "poster",
       "name": "Poster",
       "version": "1.0.0",
-      "summary": "Color fields: a huge name, then one flat color band per featured work.",
-      "description": "Every section is a flat color field with one thing set huge in it. The name fills the first band in Bricolage Grotesque, each featured post gets its own band with its cover, or with its title at poster size when it has none, and the rest are numbered notes. For brand designers, illustrators and letterers whose work is the hero.",
+      "summary": "For designers: your name in huge letters, then one big block of flat color for each featured project.",
+      "description": "Every section is a block of flat color with one thing in it, set huge. Your name fills the first block, each featured post gets its own block with its picture (or its title, poster-size, when it has none), and the rest follow as numbered notes. For brand designers, illustrators and letterers whose work is the star.",
       "categories": [
         "designers"
       ],
@@ -4505,7 +4505,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -4531,7 +4531,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "display_width",
           "type": "select",
-          "label": "Display width",
+          "label": "Name width",
           "default": "regular",
           "options": [
             {
@@ -4540,7 +4540,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "condensed",
-              "label": "Condensed"
+              "label": "Narrow"
             }
           ]
         },
@@ -4596,8 +4596,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "press",
       "name": "Press",
       "version": "1.0.0",
-      "summary": "The site as a cloth-bound book: a foil-printed cover home and bone paper reading pages.",
-      "description": "The home is a book cover: one cloth color printed in one foil ink, a large Caslon name, link rows and featured posts as spine bands. Posts open on bone paper beside a typographic cover panel. Works with no images at all. For researchers who want to be remembered.",
+      "summary": "For authors and researchers: a home page like a cloth-bound book cover, and calm pages for reading.",
+      "description": "The home page is a book cover: one cloth color, one foil-like ink, your name in large classic letters, your links, and featured posts as book spines. Posts open on cream paper beside a printed cover panel. Works with no pictures at all. For authors and researchers.",
       "categories": [
         "researchers",
         "writers"
@@ -4629,7 +4629,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "mode",
           "type": "select",
-          "label": "Reading pages",
+          "label": "Color scheme (reading pages)",
           "default": "auto",
           "options": [
             {
@@ -4638,18 +4638,18 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Bone paper"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Dark paper"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Link ink on paper",
+          "label": "Link color",
           "role": "text",
           "default": "sienna",
           "custom": true,
@@ -4674,7 +4674,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "ink",
-              "label": "Ink only",
+              "label": "Black only",
               "light": "#1a1a18",
               "dark": "#ebe3d0"
             }
@@ -4683,13 +4683,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "cloth",
           "type": "select",
-          "label": "Cover cloth and foil",
+          "label": "Cover colors",
           "default": "olive",
           "options": [
             {
@@ -4746,7 +4746,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "spines",
-              "label": "Spine bands"
+              "label": "Book spines"
             },
             {
               "value": "feature",
@@ -4757,7 +4757,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "avatar",
           "type": "boolean",
-          "label": "Foil portrait on the cover",
+          "label": "Portrait on the cover",
           "default": true
         }
       ],
@@ -4768,8 +4768,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "quire",
       "name": "Quire",
       "version": "1.1.1",
-      "summary": "The book: front matter, a preface and a contents page in EB Garamond.",
-      "description": "Home set like a book's front matter: half-title, preface, then a countdown-numbered contents list with dotted leaders. Featured posts with covers become a one-per-row shelf, and posts open like chapters with a drop cap.",
+      "summary": "For writers and essayists: a home page laid out like a book, with a preface and a contents page.",
+      "description": "A home page laid out like the first pages of a book: a title page, a preface, then a numbered contents list. Featured posts with pictures sit on a shelf, one per row, and posts open like chapters with a large first letter. For writers and essayists.",
       "categories": [
         "writers"
       ],
@@ -4820,7 +4820,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Accent",
+          "label": "Accent color",
           "role": "text",
           "default": "sienna",
           "custom": true,
@@ -4845,7 +4845,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "ink",
-              "label": "Ink only",
+              "label": "Black only",
               "light": "#1a1a18",
               "dark": "#eae3d2"
             }
@@ -4854,7 +4854,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -4876,20 +4876,20 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "numbering",
           "type": "select",
-          "label": "Contents numbering",
+          "label": "Number the contents",
           "default": "countdown",
           "options": [
             {
               "value": "countdown",
-              "label": "Countdown"
+              "label": "Counting down"
             },
             {
               "value": "roman",
-              "label": "Roman"
+              "label": "Roman numerals (I, II, III)"
             },
             {
               "value": "none",
-              "label": "None"
+              "label": "No numbers"
             }
           ]
         },
@@ -4943,8 +4943,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "sidenote",
       "name": "Sidenote",
       "version": "1.0.0",
-      "summary": "A well-set paper: EB Garamond on warm paper, with years, dates and links in the margins.",
-      "description": "Tufte-style three-track page. The bio reads as an abstract with its headings hung in the left margin, links sit in the right margin, and writing is a year-grouped ledger with dates as sidenotes. Posts get booktabs tables and a small-caps Notes section. For essayists, professors and students.",
+      "summary": "For researchers and essayists: an elegant paper look with dates and links in the margins.",
+      "description": "An elegant paper page with notes in the margins. Your bio reads like the summary of an essay, with its headings in the left margin and your links in the right. Your writing is listed by year with dates beside each title, and posts get neat tables and a Notes section. For essayists, professors and students.",
       "categories": [
         "researchers",
         "writers"
@@ -4995,25 +4995,25 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "Paper"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Night"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Data-ink accent",
+          "label": "Accent color",
           "role": "text",
           "default": "red",
           "custom": true,
           "presets": [
             {
               "value": "red",
-              "label": "Data red",
+              "label": "Red",
               "light": "#a6300e",
               "dark": "#e0826a"
             },
@@ -5031,7 +5031,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "ink",
-              "label": "None (monochrome)",
+              "label": "None (black and white)",
               "light": "#1b1b1a",
               "dark": "#e9e5da"
             }
@@ -5040,13 +5040,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "font",
           "type": "font",
-          "label": "Typeface",
+          "label": "Fonts",
           "default": "garamond"
         },
         {
@@ -5089,8 +5089,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "signal",
       "name": "Signal",
       "version": "1.0.0",
-      "summary": "The Swiss name plate: a huge Archivo name, one accent bar per section, timetable post rows.",
-      "description": "For freelancers and consultants who sell a service. Your name fills the top of a strict 12-column grid, each section opens with a full-width accent bar and an oversized number, posts read like a timetable, and your email or CV becomes the one square button.",
+      "summary": "For professionals: your name in huge clean letters, colored section bars and posts listed like a timetable.",
+      "description": "Clean, confident and orderly. Your name fills the top of the page in large letters, each section opens with a full-width colored bar and a big number, your posts read like a timetable, and your email or CV becomes the one button. For freelancers and consultants who sell a service.",
       "categories": [
         "professionals"
       ],
@@ -5130,18 +5130,18 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "White"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Black"
+              "label": "Dark"
             }
           ]
         },
         {
           "key": "accent",
           "type": "color",
-          "label": "Signal color",
+          "label": "Accent color",
           "role": "surface",
           "default": "red",
           "custom": false,
@@ -5186,7 +5186,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -5217,7 +5217,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "condensed",
-              "label": "Condensed"
+              "label": "Narrow"
             },
             {
               "value": "normal",
@@ -5279,8 +5279,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "specimen",
       "name": "Specimen",
       "version": "1.0.0",
-      "summary": "The archive table: identity in a fixed left column, every post a row in a typeset index.",
-      "description": "A 12-column page with Rethink Sans heads over IBM Plex Sans, and Azeret Mono as the material. Name, bio and links stay in a sticky left column while Selected and Writing run as hairline tables of year, title and tags, each headed with its real count. One spot color marks rules, focus and the active tag. For type, systems and UX designers who think in grids.",
+      "summary": "For designers: your name and bio on the left, and every post as a row in a neat index on the right.",
+      "description": "A tidy, precise page. Your name, bio and links stay on the left while visitors scroll; selected work and writing run on the right as neat tables of year, title and topics, each showing how many items it has. One spot color marks lines and the chosen topic. For designers who like order.",
       "categories": [
         "designers"
       ],
@@ -5331,7 +5331,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Spot color",
+          "label": "Accent color",
           "role": "large",
           "default": "cobalt",
           "custom": true,
@@ -5365,7 +5365,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
@@ -5387,16 +5387,16 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "index_scale",
           "type": "select",
-          "label": "Index type size",
+          "label": "List text size",
           "default": "regular",
           "options": [
             {
               "value": "regular",
-              "label": "Regular mono rows"
+              "label": "Regular"
             },
             {
               "value": "large",
-              "label": "Large sans titles"
+              "label": "Large"
             }
           ]
         },
@@ -5425,16 +5425,16 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "identity",
           "type": "select",
-          "label": "Identity column",
+          "label": "Your name and bio",
           "default": "sticky",
           "options": [
             {
               "value": "sticky",
-              "label": "Sticky on the left"
+              "label": "Fixed on the left"
             },
             {
               "value": "top",
-              "label": "Block above the index"
+              "label": "Above the list"
             }
           ]
         }
@@ -5446,8 +5446,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "verso",
       "name": "Verso",
       "version": "1.0.0",
-      "summary": "The photobook spread: a quiet text column facing one uncropped plate and an index of work.",
-      "description": "Set like the left-hand page of a photobook. A fixed column holds your name, nav and a line of bio; one plate faces it at natural aspect, and every project is listed as an italic title with its year. Hovering a title lays its cover over the plate. For fine-art and documentary photographers.",
+      "summary": "For photographers and artists: a short text beside one large photo, plus a list of your work.",
+      "description": "Like the left-hand page of a photobook. Your name, menu and a line of bio stay on one side, one large photo faces them, shown whole, and every project is listed by title and year. Pointing at a title shows its photo. For fine-art and documentary photographers.",
       "categories": [
         "photographers",
         "artists"
@@ -5509,7 +5509,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Accent",
+          "label": "Accent color",
           "role": "text",
           "default": "ink",
           "custom": false,
@@ -5525,24 +5525,24 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "font",
           "type": "font",
-          "label": "Typeface",
+          "label": "Fonts",
           "default": "garamond"
         },
         {
           "key": "ground",
           "type": "select",
-          "label": "Mount",
+          "label": "Background",
           "default": "mount",
           "options": [
             {
               "value": "mount",
-              "label": "Print-mount grey"
+              "label": "Soft gray"
             },
             {
               "value": "paper",
@@ -5578,15 +5578,15 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
           "options": [
             {
               "value": "spread",
-              "label": "Plate and index"
+              "label": "Big photo and list"
             },
             {
               "value": "index",
-              "label": "Index only"
+              "label": "List only"
             },
             {
               "value": "plate",
-              "label": "Plate only"
+              "label": "Big photo only"
             }
           ]
         },
@@ -5613,7 +5613,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "plate_swap",
           "type": "boolean",
-          "label": "Show a cover over the plate on hover",
+          "label": "Show a post's cover when you point at it",
           "default": true
         }
       ],
@@ -5624,8 +5624,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "vitrine",
       "name": "Vitrine",
       "version": "1.0.0",
-      "summary": "The exhibition catalogue: one work hung on a white wall with a printed caption beside it.",
-      "description": "The home page opens on your newest work, uncropped, with your name and bio set beside it like a wall text. Other works hang one per row with catalogue captions, and every post is listed in a numbered, year-by-year index. One serif family, no ornament: the art carries the color.",
+      "summary": "For artists: one artwork at a time on a white wall, each with a printed label beside it.",
+      "description": "One artwork at a time, as on a gallery wall. The home page opens on your newest work, uncropped, with your name and bio beside it like a wall label. Other works hang one per row with printed captions, and every post is listed in a numbered index by year. No decoration: the art brings the color. For artists.",
       "categories": [
         "artists"
       ],
@@ -5675,11 +5675,11 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "light",
-              "label": "White wall"
+              "label": "Light"
             },
             {
               "value": "dark",
-              "label": "Dark room"
+              "label": "Dark"
             }
           ]
         },
@@ -5714,28 +5714,28 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "font",
           "type": "font",
-          "label": "Typeface",
+          "label": "Fonts",
           "default": "newsreader"
         },
         {
           "key": "hang",
           "type": "select",
-          "label": "How works hang",
+          "label": "Layout of works",
           "default": "offset",
           "options": [
             {
               "value": "offset",
-              "label": "Offset, left and right"
+              "label": "Alternating left and right"
             },
             {
               "value": "centered",
-              "label": "Centred column"
+              "label": "One centered column"
             },
             {
               "value": "pairs",
@@ -5775,14 +5775,14 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
             },
             {
               "value": "grey",
-              "label": "Gallery grey"
+              "label": "Gallery gray"
             }
           ]
         },
         {
           "key": "index_numbers",
           "type": "boolean",
-          "label": "Number the catalogue index",
+          "label": "Number the list of works",
           "default": true
         }
       ],
@@ -5793,8 +5793,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "id": "workbench",
       "name": "Workbench",
       "version": "1.0.0",
-      "summary": "The maintainer's index: profile beside a featured card, bordered post cards, and every topic with its count.",
-      "description": "A structured home for people with a lot of output. Your profile sits beside one featured post as a split card, recent posts follow as a two-up grid of bordered cards or as table rows, and a topic index lists every tag with its real post count. Instrument Sans with IBM Plex Mono metadata.",
+      "summary": "For developers: your profile beside a featured post, post cards, and every topic with its count.",
+      "description": "A tidy home for people with a lot to show. Your profile sits beside one featured post, recent posts follow as cards or as table rows, and a topic list shows every topic with how many posts it has. For developers and technical writers.",
       "categories": [
         "developers"
       ],
@@ -5850,7 +5850,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "accent",
           "type": "color",
-          "label": "Accent",
+          "label": "Accent color",
           "role": "text",
           "default": "emerald",
           "custom": true,
@@ -5884,13 +5884,13 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         {
           "key": "webfonts",
           "type": "boolean",
-          "label": "Load web fonts",
+          "label": "Use the design's own fonts",
           "default": true
         },
         {
           "key": "font",
           "type": "font",
-          "label": "Typeface",
+          "label": "Fonts",
           "default": "instrument"
         },
         {

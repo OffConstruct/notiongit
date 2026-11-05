@@ -255,9 +255,9 @@ html[data-ink-home-layout="list"] .alm-home .alm-card-excerpt { display: none; }
 html[data-ink-home-layout="list"] .alm-home .alm-card-body {
   display: grid; grid-template-columns: 8rem minmax(0, 1fr) auto; align-items: baseline; gap: 1rem; padding: 1rem 0;
 }
-html[data-ink-home-layout="list"] .alm-home .alm-card-tag { color: var(--c-label); }
+html[data-ink-home-layout="list"] .alm-home .alm-shelf .alm-card-tag { color: var(--c-label); }
 html[data-ink-home-layout="list"] .alm-home .alm-card-title { font-size: 1.25rem; line-height: 1.75rem; font-weight: 600; }
-html[data-ink-home-layout="list"] .alm-home .alm-card-meta { margin: 0; padding: 0; color: var(--ink-muted); }
+html[data-ink-home-layout="list"] .alm-home .alm-shelf .alm-card-meta { margin: 0; padding: 0; color: var(--ink-muted); }
 
 /* Series rows */
 .alm-series + .alm-series { margin-top: 3rem; }

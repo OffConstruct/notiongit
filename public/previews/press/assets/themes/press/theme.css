@@ -663,7 +663,7 @@ code {
   border-bottom-color: var(--ink-text);
 }
 
-.pr-body a.footnote { text-decoration: none; padding-inline: 0.1em; }
+.pr-body a.footnote { text-decoration: underline; text-underline-offset: 0.15em; padding-inline: 0.1em; }
 sup { line-height: 0; }
 
 .pr-body .footnotes {
@@ -683,7 +683,7 @@ sup { line-height: 0; }
 }
 
 .pr-body .footnotes ol { padding-left: 1.25rem; }
-.pr-body .reversefootnote { text-decoration: none; }
+.pr-body .reversefootnote { text-decoration: underline; text-underline-offset: 0.15em; }
 
 .pr-colophon {
   margin-top: 3.5rem;

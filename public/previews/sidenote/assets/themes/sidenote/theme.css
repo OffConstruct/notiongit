@@ -550,7 +550,8 @@ code {
 sup { line-height: 0; }
 
 .sn-prose a.footnote {
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
   padding-inline: 0.1em;
   font-variant-numeric: lining-nums;
 }
@@ -574,7 +575,7 @@ sup { line-height: 0; }
 
 .sn-prose .footnotes ol { padding-left: 1.4rem; }
 .sn-prose .footnotes li p { margin: 0 0 0.35rem; }
-.sn-prose .reversefootnote { text-decoration: none; }
+.sn-prose .reversefootnote { text-decoration: underline; text-underline-offset: 0.15em; }
 
 /* ─── Tags page (base markup) ──────────────────────────────── */
 .ink-tags .tags-header { margin-bottom: 1.5rem; }

@@ -180,6 +180,13 @@ h1, h2, h3, h4 { overflow-wrap: break-word; min-width: 0; }
 .an-name.an-name--long { font-size: calc(clamp(2.5rem, 7vw, 6.5rem) * var(--display-scale)); }
 .an-credit { margin: var(--space-3) 0 0; font-size: var(--text-body); color: var(--on-field); max-width: 26em; }
 
+/* On phones a scope frame would be a thin strip; the hero uses a 16:9 still instead. */
+@media (max-width: 699.98px) {
+  .an-hero .an-frame img { aspect-ratio: 16 / 9; }
+}
+.an-reel-more { width: var(--wrap); margin: var(--space-4) auto 0; }
+.an-reel-more a { color: var(--ink-text); }
+
 html:not([data-ink-hero="latest"]) [data-variant="hero:latest"] { display: none; }
 html[data-ink-hero="latest"] [data-variant="hero:featured"],
 html[data-ink-hero="card"] [data-variant] { display: none; }

@@ -704,7 +704,7 @@ code {
 
 .lt-prose td { font-variant-numeric: tabular-nums; }
 
-.lt-prose a.footnote { text-decoration: none; font-family: var(--ink-font-mono); font-size: 0.8em; }
+.lt-prose a.footnote { text-decoration: underline; text-underline-offset: 0.15em; font-family: var(--ink-font-mono); font-size: 0.8em; }
 sup { line-height: 0; }
 
 .lt-prose .footnotes {
@@ -721,7 +721,7 @@ sup { line-height: 0; }
   font-weight: 600;
 }
 
-.lt-prose .reversefootnote { text-decoration: none; }
+.lt-prose .reversefootnote { text-decoration: underline; text-underline-offset: 0.15em; }
 
 .lt-cite {
   max-width: 42rem;

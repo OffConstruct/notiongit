@@ -296,21 +296,36 @@ html[data-ink-covers="original"] .crate-blank { aspect-ratio: 1; }
   background: var(--crate-chrome);
   overflow: hidden;
 }
+/* A post without a cover gets a designed sleeve: its title on a field tinted
+   with the badge color, in one of four strengths picked from the title. */
+.crate-blank { flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 8px; min-width: 0; container-type: inline-size; }
+.crate-blank--0 { background: color-mix(in oklab, var(--ink-accent) 10%, var(--crate-tile)); }
+.crate-blank--1 { background: color-mix(in oklab, var(--ink-accent) 18%, var(--crate-tile)); }
+.crate-blank--2 { background: color-mix(in oklab, var(--ink-accent) 26%, var(--crate-tile)); }
+.crate-blank--3 { background: color-mix(in oklab, var(--ink-accent) 34%, var(--crate-tile)); }
+.crate-blank-k {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-text);
+}
 .crate-blank-t {
   font-family: var(--ink-font-display);
-  font-size: clamp(1.125rem, 2.6vw, 1.875rem);
-  line-height: 1.1;
+  font-size: clamp(0.75rem, 9cqi, 1.5rem);
+  line-height: 1.15;
   letter-spacing: 0.02em;
-  color: var(--ink-muted);
+  color: var(--ink-text);
   text-transform: uppercase;
   overflow-wrap: break-word;
+  hyphens: auto;
 }
 .crate-case .crate-badge { position: absolute; left: 10px; bottom: -11px; }
 .crate-tile-title { font-weight: 800; font-size: 1.0625rem; line-height: 1.22; overflow-wrap: anywhere; }
 .crate-tile-meta { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--ink-muted); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
 .crate-tile-tag::before { content: "#"; }
 html[data-ink-density="large"] .crate-tile-title { font-size: 1.25rem; }
-html[data-ink-density="large"] .crate-blank-t { font-size: clamp(1.5rem, 3.4vw, 2.5rem); }
+html[data-ink-density="large"] .crate-blank-t { font-size: clamp(1rem, 10cqi, 2.5rem); }
 
 /* Table: one row per post, ice stripes so a long archive scans */
 html[data-ink-density="table"] .crate-grid {
@@ -339,7 +354,7 @@ html[data-ink-density="table"] .crate-case,
 html[data-ink-density="table"] .crate-tile-meta { display: contents; }
 html[data-ink-density="table"] .crate-cover,
 html[data-ink-density="table"] .crate-blank { grid-area: thumb; width: 44px; height: 44px; aspect-ratio: 1; padding: 0; border-radius: max(var(--crate-r) / 3, 0px); }
-html[data-ink-density="table"] .crate-blank-t { display: none; }
+html[data-ink-density="table"] :is(.crate-blank-t, .crate-blank-k) { display: none; }
 html[data-ink-density="table"] .crate-case .crate-badge { grid-area: n; position: static; justify-self: start; }
 html[data-ink-density="table"] .crate-tile-title { grid-area: title; font-size: 1rem; }
 html[data-ink-density="table"] .crate-tile-meta time { grid-area: date; color: var(--ink-muted); font-size: 0.875rem; }

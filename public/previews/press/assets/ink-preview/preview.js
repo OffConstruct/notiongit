@@ -1,6 +1,6 @@
 // InkDrafts preview tweaks, copied into preview builds only. Applies
 // ?t_<key>=<value> and same-origin inkdrafts:tweaks messages with the rules of
-// _includes/ink/tweaks.html.
+// _includes/ink/tweaks.html, and ?name= / inkdrafts:name messages.
 (function () {
   'use strict';
   var d = document, root = d.documentElement, node = d.getElementById('ink-manifest'), m;
@@ -75,16 +75,40 @@
     }
   }
 
-  var initial = {};
-  new URLSearchParams(location.search).forEach(function (v, k) {
+  // The visitor's own name in place of the sample name (?name=, or an
+  // inkdrafts:name message), so a preview reads as their site. Text only.
+  var sample = (d.querySelector('meta[property="og:site_name"]') || {}).content || 'Rowan Vale', shown = sample;
+  function rename(value) {
+    var next = typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60) : '';
+    next = next || sample;
+    if (next === shown) return;
+    var from = shown, done = [];
+    shown = next;
+    d.title = d.title.split(from).join(next);
+    // A name split across spans (a styled first word, say) becomes one text node.
+    d.body.querySelectorAll('*').forEach(function (el) {
+      if (!el.children.length || el.querySelector('img, svg, picture') || done.some(function (p) { return p.contains(el); })) return;
+      if (el.textContent.replace(/\s+/g, ' ').trim() === from) { el.textContent = next; done.push(el); }
+    });
+    var walk = d.createTreeWalker(d.body, NodeFilter.SHOW_TEXT), node;
+    while ((node = walk.nextNode())) {
+      if (node.nodeValue.indexOf(from) !== -1) node.nodeValue = node.nodeValue.split(from).join(next);
+    }
+  }
+
+  var initial = {}, query = new URLSearchParams(location.search);
+  query.forEach(function (v, k) {
     if (k.indexOf('t_') === 0) initial[k.slice(2)] = v;
   });
   apply(initial);
+  if (query.has('name')) rename(query.get('name'));
 
   addEventListener('message', function (e) {
     var x = e.data;
     if (e.origin !== location.origin || e.source !== parent) return;
-    if (!x || x.type !== 'inkdrafts:tweaks' || x.v !== 1 || x.theme !== m.id) return;
+    if (!x || x.v !== 1) return;
+    if (x.type === 'inkdrafts:name') return rename(x.name);
+    if (x.type !== 'inkdrafts:tweaks' || x.theme !== m.id) return;
     if (x.tweaks && typeof x.tweaks === 'object') apply(x.tweaks);
   });
 
@@ -97,6 +121,7 @@
       if (k.indexOf('t_') === 0) url.searchParams.delete(k);
     });
     Object.keys(state).forEach(function (k) { url.searchParams.set('t_' + k, String(state[k])); });
+    if (shown !== sample) url.searchParams.set('name', shown); else url.searchParams.delete('name');
     a.href = url.href;
   });
 

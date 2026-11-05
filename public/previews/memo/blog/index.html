@@ -28,8 +28,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link id="ink-fonts" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,400&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/previews/memo/assets/themes/memo/theme.css">
+<link rel="stylesheet" href="/previews/memo/assets/ink/shared.css">
 <style id="ink-tweaks">:root{--tw-accent:#9a2f1f;--tw-accent-dark:#e88a6f;--tw-text-size:19px;--tw-font-body:Newsreader, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;--tw-font-display:Newsreader, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;--tw-font-mono:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}</style>
-<script type="application/json" id="ink-manifest">{"$schema":"../../scripts/themes/theme.schema.json","schema_version":1,"id":"memo","name":"Memo","version":"1.0.0","summary":"The operator's letter: a two-tone statement, a bio written as a letter, and a year-hung index in Newsreader.","description":"For founders whose work speaks for itself. The home page is a letter: your name and tagline as one quiet sentence, your bio, a Start here line built from featured posts, then every post as a title-only index hung on its year. One serif, one accent, no chrome.","categories":["entrepreneurs","writers"],"author":{"name":"InkDrafts","url":"https://inkdrafts.com"},"license":"MIT","slots":["header","footer","home","blog","post","page"],"fonts":[{"value":"newsreader","label":"Newsreader","google":"family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,400","stacks":{"body":"Newsreader, \"Iowan Old Style\", \"Palatino Linotype\", Palatino, Georgia, serif","display":"Newsreader, \"Iowan Old Style\", \"Palatino Linotype\", Palatino, Georgia, serif","mono":"ui-monospace, SFMono-Regular, Menlo, Consolas, \"Liberation Mono\", monospace"}}],"palette":{"light":{"bg":"#faf8f3","text":"#1b1a17","muted":"#6b665c"},"dark":{"bg":"#151412","text":"#ece8df","muted":"#9d978b"}},"tweaks":[{"key":"mode","type":"select","label":"Color scheme","default":"auto","options":[{"value":"auto","label":"Match system"},{"value":"light","label":"Light"},{"value":"dark","label":"Dark"}]},{"key":"accent","type":"color","label":"Accent","role":"text","default":"oxblood","custom":true,"presets":[{"value":"oxblood","label":"Oxblood","light":"#9a2f1f","dark":"#e88a6f"},{"value":"ink-blue","label":"Ink blue","light":"#1f3a8a","dark":"#9db4f0"},{"value":"forest","label":"Forest","light":"#2f5d3a","dark":"#8cc79a"}]},{"key":"webfonts","type":"boolean","label":"Load web fonts","default":true},{"key":"statement","type":"select","label":"Opening line","default":"two-tone","options":[{"value":"two-tone","label":"Name, then tagline"},{"value":"tagline-first","label":"Tagline large, name as signature"},{"value":"name-large","label":"Name large, tagline small"}]},{"key":"list_style","type":"select","label":"Writing index","default":"by-year","options":[{"value":"by-year","label":"Grouped by year"},{"value":"titles-dates","label":"Titles with dates"},{"value":"titles","label":"Titles only"}]},{"key":"start_here","type":"boolean","label":"Start here line from featured posts","default":true},{"key":"nav_style","type":"select","label":"Navigation","default":"inline","options":[{"value":"inline","label":"Row at the top"},{"value":"margin","label":"Stacked in the right margin"},{"value":"footer-only","label":"Footer only"}]},{"key":"text_size","type":"range","label":"Text size","min":17,"max":21,"step":1,"unit":"px","default":19}]}</script>
+<script type="application/json" id="ink-manifest">{"$schema":"../../scripts/themes/theme.schema.json","schema_version":1,"id":"memo","name":"Memo","version":"1.0.0","summary":"For founders and writers: a two-part opening line, a bio written as a letter and your posts listed by year.","description":"For founders whose work speaks for itself. The home page reads like a letter: your name and tagline as one quiet sentence, your bio, a Start here line of featured posts, then every post listed by title under its year. One typeface, one accent color, nothing extra.","categories":["entrepreneurs","writers"],"author":{"name":"InkDrafts","url":"https://inkdrafts.com"},"license":"MIT","slots":["header","footer","home","blog","post","page"],"fonts":[{"value":"newsreader","label":"Newsreader","google":"family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,400","stacks":{"body":"Newsreader, \"Iowan Old Style\", \"Palatino Linotype\", Palatino, Georgia, serif","display":"Newsreader, \"Iowan Old Style\", \"Palatino Linotype\", Palatino, Georgia, serif","mono":"ui-monospace, SFMono-Regular, Menlo, Consolas, \"Liberation Mono\", monospace"}}],"palette":{"light":{"bg":"#faf8f3","text":"#1b1a17","muted":"#6b665c"},"dark":{"bg":"#151412","text":"#ece8df","muted":"#9d978b"}},"tweaks":[{"key":"mode","type":"select","label":"Color scheme","default":"auto","options":[{"value":"auto","label":"Match system"},{"value":"light","label":"Light"},{"value":"dark","label":"Dark"}]},{"key":"accent","type":"color","label":"Accent color","role":"text","default":"oxblood","custom":true,"presets":[{"value":"oxblood","label":"Oxblood","light":"#9a2f1f","dark":"#e88a6f"},{"value":"ink-blue","label":"Ink blue","light":"#1f3a8a","dark":"#9db4f0"},{"value":"forest","label":"Forest","light":"#2f5d3a","dark":"#8cc79a"}]},{"key":"webfonts","type":"boolean","label":"Use the design's own fonts","default":true},{"key":"statement","type":"select","label":"Opening line","default":"two-tone","options":[{"value":"two-tone","label":"Name, then tagline"},{"value":"tagline-first","label":"Tagline large, name as signature"},{"value":"name-large","label":"Name large, tagline small"}]},{"key":"list_style","type":"select","label":"Writing index","default":"by-year","options":[{"value":"by-year","label":"Grouped by year"},{"value":"titles-dates","label":"Titles with dates"},{"value":"titles","label":"Titles only"}]},{"key":"start_here","type":"boolean","label":"Show featured posts as Start here","default":true},{"key":"nav_style","type":"select","label":"Navigation","default":"inline","options":[{"value":"inline","label":"Row at the top"},{"value":"margin","label":"Stacked in the right margin"},{"value":"footer-only","label":"Footer only"}]},{"key":"text_size","type":"range","label":"Text size","min":17,"max":21,"step":1,"unit":"px","default":19}]}</script>
 <script src="/previews/memo/assets/ink-preview/preview.js" defer></script>
 <link type="application/atom+xml" rel="alternate" href="/previews/memo/feed.xml" title="Rowan Vale" />
 
@@ -62,7 +63,13 @@
     <ol class="memo-rows">
       <li class="memo-row is-pick">
         <span class="memo-row-main">
-          <a class="memo-row-link" href="/previews/memo/2026/02/14/the-harbour-at-low-tide/">The harbour at low tide</a> <span class="memo-pick">pick</span>
+          <a class="memo-row-link" href="/previews/memo/2026/03/01/moorings-1000-boats/">Moorings passes 1,000 bookings a month</a> <span class="memo-pick">pick</span>
+        </span>
+        <time class="memo-row-date" datetime="2026-03-01T00:00:00+00:00"><span class="memo-d-md">Mar 1</span><span class="memo-d-y">, 2026</span></time>
+      </li>
+      <li class="memo-row is-pick">
+        <span class="memo-row-main">
+          <a class="memo-row-link" href="/previews/memo/2026/02/14/the-harbour-at-low-tide/">The harbour at low tide: what a slow month taught us</a> <span class="memo-pick">pick</span>
         </span>
         <time class="memo-row-date" datetime="2026-02-14T00:00:00+00:00"><span class="memo-d-md">Feb 14</span><span class="memo-d-y">, 2026</span></time>
       </li>
@@ -73,27 +80,27 @@
     <ol class="memo-rows">
       <li class="memo-row">
         <span class="memo-row-main">
-          <a class="memo-row-link" href="/previews/memo/2025/11/03/keeping-a-commonplace-book/">Keeping a commonplace book</a>
+          <a class="memo-row-link" href="/previews/memo/2025/11/03/keeping-a-commonplace-book/">Keeping a commonplace book of customer calls</a>
         </span>
         <time class="memo-row-date" datetime="2025-11-03T00:00:00+00:00"><span class="memo-d-md">Nov 3</span><span class="memo-d-y">, 2025</span></time>
       </li>
       <li class="memo-row is-pick">
         <span class="memo-row-main">
-          <a class="memo-row-link" href="/previews/memo/2025/09/20/a-ledger-of-small-repairs/">A ledger of small repairs</a> <span class="memo-pick">pick</span>
+          <a class="memo-row-link" href="/previews/memo/2025/09/30/tide-tables-print-shop-sold/">We sold the tide tables print shop</a> <span class="memo-pick">pick</span>
         </span>
-        <time class="memo-row-date" datetime="2025-09-20T00:00:00+00:00"><span class="memo-d-md">Sep 20</span><span class="memo-d-y">, 2025</span></time>
-      </li>
-      <li class="memo-row is-pick">
-        <span class="memo-row-main">
-          <a class="memo-row-link" href="/previews/memo/2025/06/08/on-writing-in-public/">On writing in public</a> <span class="memo-pick">pick</span>
-        </span>
-        <time class="memo-row-date" datetime="2025-06-08T00:00:00+00:00"><span class="memo-d-md">Jun 8</span><span class="memo-d-y">, 2025</span></time>
+        <time class="memo-row-date" datetime="2025-09-30T00:00:00+00:00"><span class="memo-d-md">Sep 30</span><span class="memo-d-y">, 2025</span></time>
       </li>
       <li class="memo-row">
         <span class="memo-row-main">
-          <a class="memo-row-link" href="/previews/memo/2025/03/15/field-recording-at-the-pier/">Field recording at the pier</a>
+          <a class="memo-row-link" href="/previews/memo/2025/07/12/pricing-for-harbour-masters/">Pricing for harbour masters</a>
         </span>
-        <time class="memo-row-date" datetime="2025-03-15T00:00:00+00:00"><span class="memo-d-md">Mar 15</span><span class="memo-d-y">, 2025</span></time>
+        <time class="memo-row-date" datetime="2025-07-12T00:00:00+00:00"><span class="memo-d-md">Jul 12</span><span class="memo-d-y">, 2025</span></time>
+      </li>
+      <li class="memo-row">
+        <span class="memo-row-main">
+          <a class="memo-row-link" href="/previews/memo/2025/04/01/monthly-update-march/">Monthly update: March</a>
+        </span>
+        <time class="memo-row-date" datetime="2025-04-01T00:00:00+00:00"><span class="memo-d-md">Apr 1</span><span class="memo-d-y">, 2025</span></time>
       </li>
     </ol>
   </section>
@@ -102,38 +109,9 @@
     <ol class="memo-rows">
       <li class="memo-row">
         <span class="memo-row-main">
-          <a class="memo-row-link" href="/previews/memo/2024/12/01/everything-i-know-about-winter-gardens/">Everything I know about winter gardens, the people who tend them in the dark, and the vegetables that refuse to give up</a>
+          <a class="memo-row-link" href="/previews/memo/2024/12/10/why-we-bootstrap/">Why we do not take investment</a>
         </span>
-        <time class="memo-row-date" datetime="2024-12-01T00:00:00+00:00"><span class="memo-d-md">Dec 1</span><span class="memo-d-y">, 2024</span></time>
-      </li>
-      <li class="memo-row">
-        <span class="memo-row-main">
-          <a class="memo-row-link" href="/previews/memo/2024/08/19/salt-roads/">Salt roads</a> <span class="memo-clip">at magazine.example.org</span>
-        </span>
-        <time class="memo-row-date" datetime="2024-08-19T00:00:00+00:00"><span class="memo-d-md">Aug 19</span><span class="memo-d-y">, 2024</span></time>
-      </li>
-      <li class="memo-row">
-        <span class="memo-row-main">
-          <a class="memo-row-link" href="/previews/memo/2024/04/02/a-short-note/">A short note</a>
-        </span>
-        <time class="memo-row-date" datetime="2024-04-02T00:00:00+00:00"><span class="memo-d-md">Apr 2</span><span class="memo-d-y">, 2024</span></time>
-      </li>
-    </ol>
-  </section>
-  <section class="memo-year">
-    <h2 class="memo-year-label">2023</h2>
-    <ol class="memo-rows">
-      <li class="memo-row">
-        <span class="memo-row-main">
-          <a class="memo-row-link" href="/previews/memo/2023/10/10/notes-on-tide-tables/">Notes on tide tables</a>
-        </span>
-        <time class="memo-row-date" datetime="2023-10-10T00:00:00+00:00"><span class="memo-d-md">Oct 10</span><span class="memo-d-y">, 2023</span></time>
-      </li>
-      <li class="memo-row">
-        <span class="memo-row-main">
-          <a class="memo-row-link" href="/previews/memo/2023/05/21/hello-again/">Hello again</a>
-        </span>
-        <time class="memo-row-date" datetime="2023-05-21T00:00:00+00:00"><span class="memo-d-md">May 21</span><span class="memo-d-y">, 2023</span></time>
+        <time class="memo-row-date" datetime="2024-12-10T00:00:00+00:00"><span class="memo-d-md">Dec 10</span><span class="memo-d-y">, 2024</span></time>
       </li>
     </ol>
   </section>
