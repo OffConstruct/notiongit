@@ -54,7 +54,8 @@ needs `google-chrome-stable`, which GitHub's `ubuntu-latest` runners ship.
 
 ## Manual matrix
 
-Run each pass against a deployed preview or `bun run dev`. The matrix is the
+Run each pass against a deployed preview or `bun run dev` (it passes
+`--config ./wrangler.toml`; see the README). The matrix is the
 release checklist; the automated gates cover the reflow and keyboard rows
 mechanically.
 

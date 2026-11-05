@@ -9,6 +9,7 @@
     "test": "bun test test/ && bun run --filter libsodium-workers-spike test && bun run --filter notion-oauth-template-spike test",
     "test:a11y": "bun test test/a11y.test.ts",
     "test:reflow": "bun run scripts/reflow-check.ts",
+    "test:forms": "bun run scripts/forms-e2e.ts",
     "themes:sync": "bun run scripts/sync-themes.ts",
     "themes:audit": "bun run scripts/theme-audit.ts",
     "test:pages-integration": "bun test test/github-pages.integration.test.ts",
@@ -16,7 +17,7 @@
     "typecheck": "spikes/libsodium-workers/node_modules/.bin/tsc -p tsconfig.json && bun run --filter libsodium-workers-spike typecheck",
     "build": "spikes/libsodium-workers/node_modules/.bin/wrangler deploy --dry-run --env=\"\"",
     "deploy:dry-run": "bun run build",
-    "dev": "spikes/libsodium-workers/node_modules/.bin/wrangler dev"
+    "dev": "spikes/libsodium-workers/node_modules/.bin/wrangler dev .zcode/skills/verify-notiongit/helpers/verify-entry.ts --config ./wrangler.toml --local-protocol https"
   },
   "dependencies": {
     "libsodium": "0.8.4",

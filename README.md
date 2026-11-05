@@ -13,6 +13,30 @@ bun run test
 bun run build
 ```
 
+To run the Worker locally, put the OAuth and App secrets in `.dev.vars` (see
+`wrangler.toml`) and start it with `bun run dev`. The script is
+
+```sh
+spikes/libsodium-workers/node_modules/.bin/wrangler dev \
+  .zcode/skills/verify-notiongit/helpers/verify-entry.ts \
+  --config ./wrangler.toml --local-protocol https
+```
+
+`--config` must name the repository's `wrangler.toml`: wrangler is installed
+under the spike workspace and otherwise resolves that workspace's config. The
+entry file serves only the default handler, because workerd refuses to start
+a main module that also exports plain values, and `src/index.ts` re-exports
+test-facing names. `--local-protocol https` matters because the Worker
+redirects every `http:` request to `https:`. Use `curl -k` against
+`https://127.0.0.1:8787`.
+
+With a dev server running, `bun run test:forms [base-url]` clicks the owner's
+forms (Update now, Save, the fix buttons, Connect Notion) in headless Chrome.
+It needs a server whose GitHub calls are faked and that serves the
+`/__dev/login?as=<scenario>` sign-in fixture (scenarios `healthy`,
+`bulk_delete`, `build_failed`, `not_connected`); it fails every request to
+github.com or Notion in the browser.
+
 Accessibility is gated by the axe suite in `bun run test` and the real-browser
 reflow/keyboard checks in `bun run test:reflow`; the manual matrix and known
 limitations live in [`docs/accessibility.md`](docs/accessibility.md).

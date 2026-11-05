@@ -8,11 +8,27 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      INKDRAFTS_BUILD_NATIVE: '1'
+      BUNDLE_GEMFILE: ${{ github.workspace }}/template/Gemfile
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: latest
+          bun-version: 1.4.4
+      - name: Check out the site template next to the worker
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: ${{ github.repository_owner }}/notiongit-template
+          path: template
+      # Theme builds run Jekyll natively (no Docker on the forge runner),
+      # on the Ruby the template's own CI and Docker image use.
+      - name: Set up Ruby for the theme builds
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: '3.1'
+          bundler-cache: true
+          working-directory: template
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun run test
@@ -25,5 +41,16 @@ jobs:
           $SUDO apt-get update -q
           $SUDO apt-get install -y -q /tmp/chrome.deb
       - run: bun run test:reflow
+      # The committed catalog and previews must match the template. The
+      # template commit and dirty flag are expected to differ.
+      - name: Theme catalog matches the template
+        run: |
+          bun run themes:sync --template template --catalog-only
+          git diff --exit-code -I '"template(Commit|Dirty)":' -- src/theme-catalog.generated.ts
+      - name: Theme previews match the template
+        run: |
+          template/scripts/export-previews --out "$RUNNER_TEMP/previews" --base /previews
+          diff -r --exclude=thumb.webp --exclude=index.json "$RUNNER_TEMP/previews" public/previews
+      - run: bun run themes:audit --all --template template
       - run: bun run build
       - run: git diff --check

@@ -19,12 +19,13 @@ staging or production Workers and never deploys anything.
 Run from the repository root. Prerequisite: `bun install --frozen-lockfile`
 (node_modules present).
 
-**Do not use `bun run dev`.** The repo's own dev script crashes at startup:
-`src/index.ts` re-exports test-facing barrel names (e.g. the string constant
-`ACCOUNT_LEASE_PREFIX`), and workerd requires every main-module export to be a
-handler. `wrangler deploy --dry-run` does not catch this. The verification
-config below works around it with a thin entry module; it never modifies the
-repository.
+`bun run dev` now works for a plain local server: it passes
+`--config ./wrangler.toml` (wrangler lives in the spike workspace and would
+otherwise read that workspace's config) and starts from
+`helpers/verify-entry.ts`, because workerd refuses a main module that also
+exports plain values and `src/index.ts` re-exports test-facing names. It
+reads real secrets from `.dev.vars`. For verification use the config below
+instead: it needs no secrets and never modifies the repository.
 
 ```sh
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
