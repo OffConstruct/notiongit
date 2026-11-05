@@ -1302,7 +1302,7 @@ describe('J6 progress route journey', () => {
 
     const page = journey.responses[0];
     expect(page.status).toBe(200);
-    expect(await page.text()).toContain('<h1 id="progress-heading">Connect Notion to finish setup</h1>');
+    expect(await page.text()).toContain('<h1 id="progress-heading">Last step: connect Notion</h1>');
     const status = journey.responses[1];
     expect(status.status).toBe(200);
     expect(await status.json()).toMatchObject({ progress: { status: 'awaiting_notion' } });
@@ -1464,7 +1464,8 @@ describe('J7 status sign-in and re-run journey', () => {
       if (call.url.includes('/app/installations/')) continue;
       expect(call.authorization).toBe(`Bearer ${INSTALLATION_TOKENS[mint - 1]}`);
     }
-    expect(mint).toBe(4);
+    // Status page, then re-run: one mint for each discovery and one for the dispatch.
+    expect(mint).toBe(3);
     const dispatch = journey.calls.find((call) => call.url.endsWith('/actions/workflows/sync-notion.yml/dispatches'));
     expect(JSON.parse(dispatch!.body!)).toEqual({ ref: 'main', inputs: { allow_bulk_delete: 'false' } });
 

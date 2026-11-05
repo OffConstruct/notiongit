@@ -118,15 +118,16 @@ describe('progress projection', () => {
       updatedAt: 0,
       progress: {
         status: 'missing',
-        message: userCopy('provisioning_job_missing').message,
-        action: userCopy('provisioning_job_missing').action,
-        restartUrl: '/connect/github',
+        message: 'This setup link has expired.',
+        action: 'If your site is already set up, manage it from your dashboard. If not, start again from the beginning.',
+        restartUrl: '/connect',
       },
     });
 
+    // The Notion consent waits on the owner, so it reads as their turn, not as busy.
     const awaiting = projectProvisioning(makeJob('awaiting_notion', { secretsWritten: false }), NOW);
-    expect(awaiting.progress.status).toBe('awaiting_notion');
-    expect(stageStates(awaiting)).toEqual(['done', 'done', 'current', ...ALL_PENDING.slice(3)]);
+    expect(awaiting.progress).toMatchObject({ status: 'awaiting_notion', reconnect: false });
+    expect(stageStates(awaiting)).toEqual(['done', 'done', 'your_turn', ...ALL_PENDING.slice(3)]);
     expect(awaiting.updatedAt).toBe(NOW + 2);
 
     expect(stageStates(projectProvisioning(makeJob('awaiting_notion', { secretsWritten: true }), NOW)))
@@ -177,7 +178,7 @@ describe('progress projection', () => {
       const progress = projectProvisioning(job, NOW).progress;
       return progress.status === 'succeeded' ? progress.appearanceNote : undefined;
     };
-    expect(withAppearance(null)).toBe('Theme: Classic');
+    expect(withAppearance(null)).toBe('Design: Classic');
     expect(withAppearance('theme_unavailable')).toBe(APPEARANCE_SKIPPED_NOTES.theme_unavailable);
     expect(APPEARANCE_SKIPPED_NOTES.theme_unavailable).not.toContain('change it');
     expect(withAppearance('theme_invalid')).toBe(APPEARANCE_SKIPPED_NOTES.theme_invalid);
@@ -213,8 +214,8 @@ describe('progress projection', () => {
     expect(waiting.progress).toMatchObject({
       status: 'active',
       notice: {
-        message: 'Your setup is waiting for a free provisioning slot and will continue automatically.',
-        action: 'No action is needed. This page updates itself.',
+        message: 'You are in line. Many sites are being set up right now.',
+        action: 'It continues by itself. No need to do anything.',
       },
       pollAfterSeconds: 90,
     });
@@ -262,11 +263,14 @@ describe('progress projection', () => {
     );
     expect(retryable.progress.status).toBe('failed');
     expect(stageStates(retryable)).toEqual(pattern);
+    // Its attempts ran out, so "we'll keep trying" would no longer be true.
     expect(retryable.progress).toMatchObject({
       message: userCopy('github_rate_limited').message,
-      action: userCopy('github_rate_limited').action,
+      action: 'We tried several times and stopped. Press Try again to pick up where it stopped.',
       restartUrl: null,
+      canRetry: true,
     });
+    expect(JSON.stringify(retryable.progress)).not.toContain('keep trying');
 
     const restarting = projectProvisioning(
       makeJob('dead_letter', { failedStep: 'await_sync', code: 'github_sync_run_failed' }),
@@ -275,7 +279,19 @@ describe('progress projection', () => {
     expect(stageStates(restarting)).toEqual([
       'done', 'done', 'done', 'done', 'done', 'blocked', 'pending',
     ]);
-    expect(restarting.progress).toMatchObject({ restartUrl: '/connect/github' });
+    expect(restarting.progress).toMatchObject({ restartUrl: '/connect', canRetry: true });
+
+    const support = projectProvisioning(
+      makeJob('dead_letter', { failedStep: 'patch_config', code: 'github_config_invalid' }),
+      NOW,
+    );
+    expect(support.progress).toMatchObject({ restartUrl: null, canRetry: false });
+  });
+
+  test('a status-page reconnect job asks the owner to share their page, not take a new copy', () => {
+    const job = makeJob('awaiting_notion', { secretsWritten: false });
+    job.data.notionMode = 'reconnect';
+    expect(projectProvisioning(job, NOW).progress).toMatchObject({ status: 'awaiting_notion', reconnect: true });
   });
 
   test('a superseded job is a failure without a restart link', () => {
@@ -296,7 +312,7 @@ describe('progress projection', () => {
       NOW,
     );
     expect(snapshot.progress.status).toBe('failed');
-    expect(snapshot.progress).toMatchObject(userCopy('provisioning_step_failed'));
+    expect(snapshot.progress).toMatchObject({ message: userCopy('provisioning_step_failed').message });
   });
 
   test('every taxonomy code yields its own exact copy on a dead-letter record', () => {
@@ -308,7 +324,9 @@ describe('progress projection', () => {
       expect(snapshot.progress.status).toBe('failed');
       expect(snapshot.progress).toMatchObject({
         message: userCopy(code).message,
-        action: userCopy(code).action,
+        action: FAILURE_REGISTRY[code].retryable
+          ? 'We tried several times and stopped. Press Try again to pick up where it stopped.'
+          : userCopy(code).action,
       });
     }
   });

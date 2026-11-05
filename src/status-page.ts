@@ -1,332 +1,408 @@
 /**
- * Server-rendered status page for the post-install surface.
+ * Server-rendered status page: the owner's home for keeping their site up
+ * to date. It leads with one plain answer (is my site up to date?), one
+ * primary action, and the "Write in Notion" card; GitHub detail sits in a
+ * disclosure at the end. No client JavaScript: a run in flight offers a
+ * manual refresh instead of reloading itself.
  *
- * Mirrors `progress-page.ts`'s one self-contained document per route: the
- * design-token custom properties are duplicated on purpose, there is no
- * shared stylesheet asset, and there is no client JavaScript — the only
- * refresh mechanism is a meta tag rendered while a sync run is in flight.
- * Rendering is total over `StatusPageModel`: the headings table and the
- * body switch are both keyed by the model's kind, so a new union arm fails
- * compilation here first. Every string that came from a provider or the
- * session is escaped on its way into the document.
+ * Rendering is total over `StatusPageModel`: the body switch is keyed by
+ * the model's kind, so a new union arm fails compilation here first. Every
+ * string that came from a provider or the session is escaped on its way into
+ * the document.
  */
 
-import type { DeployOutcome, StatusPageModel, SummaryCounts, SummaryFallbackReason, SyncOutcome } from './status';
-import { SITE_PAGE_ACCENTS } from './site-styles';
+import type { SiteStatus, StatusPageModel, SummaryCounts, SummaryItem } from './status';
+import { dashboardDocument, escapeHtml, writeInNotionCard } from './dashboard-shell';
+import { UPDATE_WAIT } from './notion-words';
 
-/** Request-scoped extras the handlers own: the post-redirect-get notice and
- * the signed CSRF token embedded in the Sync-now form. Neither is domain
- * state — a model without them is still fully renderable. */
+/** Request-scoped extras the handlers own: the post-redirect-get notice, the
+ * signed CSRF token embedded in the forms, and the clock relative times are
+ * measured against. None is domain state. */
 export interface StatusPageChrome {
-  readonly notice: 'signin_required' | 'sync_triggered' | 'already_running' | null;
+  readonly notice: 'signin_required' | 'sync_triggered' | 'already_running' | 'rebuild_triggered' | 'delete_confirmed' | null;
   readonly rerunFormToken: string | null;
+  readonly nowMs?: number;
 }
-
-const PAGE_HEADINGS: { [K in StatusPageModel['kind']]: string } = {
-  entry: 'Check your site',
-  session: 'Your site',
-  no_site: 'We could not find an InkDrafts site on this account',
-  installation_gone: 'InkDrafts no longer has access to your GitHub account',
-  installation_suspended: 'Your InkDrafts access is suspended',
-  github_unavailable: 'GitHub is not answering right now',
-  auth_failed: 'Sign-in did not complete',
-};
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
-/** Deterministic UTC rendering for run timestamps; null stays empty. */
-function utcText(ms: number | null): string {
-  if (ms === null) return '';
-  const iso = new Date(ms).toISOString();
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
-}
-
-function durationText(seconds: number): string {
-  if (seconds >= 2 * 60 * 60) return `about ${Math.round(seconds / 3600)} hours`;
-  if (seconds >= 2 * 60) return `about ${Math.round(seconds / 60)} minutes`;
-  return `in ${seconds} seconds`;
-}
-
-const STYLES = `
-  ${SITE_PAGE_ACCENTS}
-  * { box-sizing: border-box; }
-  html { color-scheme: light dark; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    line-height: 1.55;
-  }
-  .skip-link {
-    position: absolute;
-    left: -9999px;
-    top: 0;
-    background: var(--accent);
-    color: var(--accent-fg);
-    padding: 0.75rem 1.25rem;
-    z-index: 10;
-  }
-  .skip-link:focus { left: 0.5rem; top: 0.5rem; }
-  a { color: var(--accent); }
-  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-  main { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
-  h1 {
-    font-size: clamp(1.6rem, 4vw, 2.25rem);
-    margin: 0 0 1rem;
-    letter-spacing: -0.02em;
-  }
-  .notice {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: 8px;
-    padding: 0.9rem 1.1rem;
-    margin: 0 0 1.25rem;
-  }
-  .notice p { margin: 0; color: var(--muted); }
-  section.card {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1rem 1.25rem;
-    margin: 0 0 1.25rem;
-  }
-  section.card h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
-  section.card p { margin: 0 0 0.5rem; }
-  .muted { color: var(--muted); }
-  .ok { color: var(--ok); }
-  .danger { color: var(--danger); }
-  .cta {
-    display: inline-block;
-    background: var(--accent);
-    color: var(--accent-fg);
-    font-weight: 600;
-    padding: 0.7rem 1.4rem;
-    border-radius: 8px;
-    text-decoration: none;
-    margin: 0.5rem 0;
-  }
-  .cta:hover { text-decoration: none; filter: brightness(1.08); }
-  button.cta { border: none; cursor: pointer; font: inherit; }
-  ul.revocations { margin: 0; padding-left: 1.25rem; }
-  ul.revocations li { margin: 0 0 0.75rem; }
-  ul.revocations li:last-child { margin-bottom: 0; }
-  ul.sync-counts { margin: 0.5rem 0 0; padding-left: 1.25rem; }
-`;
 
 const CONNECT_URL = '/status?connect=1';
 
 const NOTICES: { [N in NonNullable<StatusPageChrome['notice']>]: string } = {
-  signin_required: 'Please sign in with GitHub to see your site status.',
-  sync_triggered: 'A sync was triggered. Reload in a moment to watch it run.',
-  already_running: 'A sync is already running. Refresh to pick up the result when it finishes.',
+  signin_required: 'Please sign in again to continue. It is usually one click.',
+  sync_triggered: 'Updating your site now. Refresh this page to see when it is done.',
+  already_running: 'An update is already running. Refresh this page in a minute to see the result.',
+  rebuild_triggered: 'Publishing your site again. Refresh this page in a couple of minutes.',
+  delete_confirmed: 'Done. Those posts are coming off your site now. Refresh this page in a few minutes.',
 };
 
-/** The document never reloads itself: forced refresh with no way to decline
- * is a WCAG 2.2.1 failure (axe meta-refresh, critical), so a run in flight
- * offers a manual reload instead. */
-const REFRESH_HTML = `
-<p><a href="/status">Refresh</a> to pick up the result when the run finishes.</p>`;
-
-const DISCONNECT_HTML = `
-<section class="card">
-<h2>Leaving InkDrafts</h2>
-<ul class="revocations">
-<li>To stop future syncs, revoke the InkDrafts connection in Notion
-(Settings &#8594; Connections). The scheduled Action&#39;s next run then fails on
-invalid credentials, and syncing stays stopped until you reconnect InkDrafts.
-You can also switch the sync off yourself in the repository&#39;s Actions tab.</li>
-<li>To end InkDrafts&#39; management access, uninstall the InkDrafts App on GitHub
-(Settings &#8594; Applications &#8594; Installed GitHub Apps). This page will show the
-access as gone, and the site itself keeps working: scheduled syncs run in your
-own repository, not through InkDrafts.</li>
-<li>To require approval again before signing in, revoke the InkDrafts OAuth
-authorization on GitHub (Settings &#8594; Applications &#8594; Authorized OAuth Apps).
-A status page signed in during the last 8 hours keeps working until its
-session expires.</li>
-</ul>
-<p class="muted">In every case your repository and your published site stay yours.
-The full walkthrough, including deleting your site, is on the
-<a href="/leaving">Leaving InkDrafts</a> page.</p>
-</section>`;
-
-function countsText(counts: SummaryCounts): string {
-  return `${counts.created} created, ${counts.updated} updated, ${counts.renamed} renamed, ${counts.deleted} deleted, ${counts.unchanged} unchanged, ${counts.errors} errors`;
+function utcTitle(ms: number): string {
+  const iso = new Date(ms).toISOString();
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
-function summaryStatement(sync: Extract<SyncOutcome, { source: 'summary_v1' }>): string {
-  switch (sync.code) {
-    case 'synced':
-      return sync.kind === 'succeeded' ? 'The sync completed.' : 'The sync reported a success result.';
-    case 'missing_credentials':
-      return 'No sync ran because Notion credentials are missing.';
-    case 'bulk_delete_guard':
-      return 'The sync stopped because a bulk delete looked unsafe.';
-    case 'sync_error':
-      return 'The sync failed before it could finish.';
-    case 'row_errors':
-      return 'The sync finished with some rows that could not sync.';
-  }
-  if (sync.kind === 'succeeded') return 'The sync completed.';
-  if (sync.kind === 'no_op') return 'The sync did not change the site.';
-  return 'The sync reported a failure.';
+export function relativeTime(ms: number, nowMs: number): string {
+  const minutes = Math.round(Math.max(0, nowMs - ms) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} days ago`;
 }
 
-function summaryLabel(sync: Extract<SyncOutcome, { source: 'summary_v1' }>): string {
-  if (sync.kind === 'succeeded') return 'Last hand-triggered sync succeeded.';
-  if (sync.kind === 'no_op') return 'Last hand-triggered sync made no changes.';
-  return 'Last hand-triggered sync failed.';
+function timeHtml(ms: number, nowMs: number): string {
+  return `<time datetime="${new Date(ms).toISOString()}" title="${utcTitle(ms)}">${relativeTime(ms, nowMs)}</time>`;
 }
 
-function summaryDetails(sync: Extract<SyncOutcome, { source: 'summary_v1' }>): string {
-  const counts = [
-    sync.pages === null ? '' : `<li>Pages: ${countsText(sync.pages)}</li>`,
-    sync.posts === null ? '' : `<li>Posts: ${countsText(sync.posts)}</li>`,
-  ].join('');
-  const detail = sync.detail === null ? '' : `<p class="muted">${escapeHtml(sync.detail)}</p>`;
-  return `${detail}${counts === '' ? '' : `<ul class="sync-counts">${counts}</ul>`}`;
+function durationText(seconds: number): string {
+  if (seconds >= 2 * 60 * 60) return `in about ${Math.round(seconds / 3600)} hours`;
+  if (seconds >= 2 * 60) return `in about ${Math.round(seconds / 60)} minutes`;
+  return `in ${seconds} seconds`;
 }
 
-function syncHtml(sync: SyncOutcome, summaryFallback?: SummaryFallbackReason): string {
-  if (sync.kind === 'never_ran') return '<p>No hand-triggered sync has run yet. Your site also syncs on a schedule, though GitHub can delay a scheduled run by hours under load.</p>';
-  const runLink = sync.runUrl === null ? '' : ` <a href="${escapeHtml(sync.runUrl)}">View the run on GitHub</a>.`;
-  const when = (ms: number | null) => (ms === null ? '' : ` ${utcText(ms)}`);
-  const fallbackReason = summaryFallback === 'unsupported_version'
-    ? ' The saved summary uses an unsupported version.'
-    : summaryFallback === 'malformed'
-      ? ' The saved summary could not be read.'
-      : '';
-  const fallback = `<p class="muted">Derived from the workflow run result; per-file counts and scheduled runs are on GitHub.${fallbackReason}</p>`;
-  if ('source' in sync) {
-    const statusClass = sync.kind === 'failed' ? 'danger' : 'ok';
-    return `<p class="${statusClass}">${summaryLabel(sync)}${when(sync.finishedAtMs)}</p>${runLink}<p>${summaryStatement(sync)}</p>${summaryDetails(sync)}`;
-  }
-  switch (sync.kind) {
-    case 'running':
-      return `<p class="ok">A sync is running right now.${when(sync.startedAtMs)}</p>${runLink}${fallback}`;
-    case 'succeeded':
-      return `<p class="ok">Last hand-triggered sync succeeded.${when(sync.finishedAtMs)}</p>${runLink}${fallback}`;
-    case 'failed':
-      return `<p class="danger">Last hand-triggered sync did not succeed (reported as &ldquo;${escapeHtml(sync.conclusion)}&rdquo;).${when(sync.finishedAtMs)}</p>${runLink}${fallback}`;
-    default: {
-      const never: never = sync;
-      return never;
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/** "1 new post, 2 pages changed": non-zero counts only, in words. */
+export function changesInWords(pages: SummaryCounts | null, posts: SummaryCounts | null): string {
+  const parts: string[] = [];
+  const section = (counts: SummaryCounts | null, one: string, many: string) => {
+    if (counts === null) return;
+    if (counts.created) parts.push(`${plural(counts.created, `new ${one}`, `new ${many}`)}`);
+    if (counts.updated) parts.push(`${plural(counts.updated, one, many)} changed`);
+    if (counts.renamed) parts.push(`${plural(counts.renamed, one, many)} renamed`);
+    if (counts.deleted) parts.push(`${plural(counts.deleted, one, many)} taken down`);
+    if (counts.errors) parts.push(`${plural(counts.errors, one, many)} could not be updated`);
+  };
+  section(posts, 'post', 'posts');
+  section(pages, 'page', 'pages');
+  if (parts.length === 0) return 'Nothing had changed in Notion.';
+  const sentence = parts.join(', ');
+  return `${sentence[0].toUpperCase()}${sentence.slice(1)}.`;
+}
+
+/** What needs the owner, most urgent first. One problem renders at a time,
+ * each with the one button that fixes it. */
+export type SiteProblem =
+  | { kind: 'notion_missing' }
+  | { kind: 'notion_access' }
+  | { kind: 'bulk_delete'; count: number | null; section: 'pages' | 'posts' | null; items: readonly SummaryItem[] }
+  | { kind: 'row_errors'; count: number; items: readonly SummaryItem[] }
+  | { kind: 'sync_failed' }
+  | { kind: 'publish_failed' };
+
+/** Notion's own error text when the connection was removed or the page is no
+ * longer shared with InkDrafts (the run summary's redacted `detail`). */
+const NOTION_ACCESS_DETAIL = /API token is invalid|\bunauthori[sz]ed\b|Could not find (?:database|page|block)|restricted_resource|not shared with (?:your )?integration/iu;
+
+export function problemOf(site: SiteStatus): SiteProblem | null {
+  const sync = site.sync;
+  if (site.notionConnected === false) return { kind: 'notion_missing' };
+  if ('source' in sync && sync.code === 'missing_credentials') return { kind: 'notion_missing' };
+  if (sync.kind === 'running') return null;
+  if ('source' in sync && sync.kind === 'failed') {
+    if (sync.code === 'bulk_delete_guard') {
+      const match = sync.detail?.match(/for (pages|posts): would delete (\d+)/u);
+      return {
+        kind: 'bulk_delete',
+        count: match ? Number(match[2]) : sync.items?.length || null,
+        section: match ? match[1] as 'pages' | 'posts' : sync.items?.[0]?.section ?? null,
+        items: sync.items ?? [],
+      };
     }
+    if (sync.code === 'row_errors') {
+      const count = (sync.pages?.errors ?? 0) + (sync.posts?.errors ?? 0);
+      return { kind: 'row_errors', count: count || sync.items?.length || 1, items: sync.items ?? [] };
+    }
+    if (sync.code === 'notion_unauthorized' || NOTION_ACCESS_DETAIL.test(sync.detail ?? '')) return { kind: 'notion_access' };
+    return { kind: 'sync_failed' };
+  }
+  if (sync.kind === 'failed') return { kind: 'sync_failed' };
+  if (site.deploy.kind === 'errored') return { kind: 'publish_failed' };
+  return null;
+}
+
+function hiddenToken(token: string): string {
+  return `<input type="hidden" name="token" value="${escapeHtml(token)}">`;
+}
+
+function postButton(token: string | null, action: string, label: string, primary: boolean, path = '/status/rerun'): string {
+  if (token === null) return '';
+  const field = path === '/status/rerun' ? `<input type="hidden" name="action" value="${action}">` : '';
+  return `<form method="post" action="${path}">${hiddenToken(token)}${field}<button class="button${primary ? ' primary' : ''}" type="submit">${escapeHtml(label)}</button></form>`;
+}
+
+function itemsList(items: readonly SummaryItem[], withReason: boolean): string {
+  if (items.length === 0) return '';
+  return `<ul class="plain">${items.map((item) =>
+    `<li><strong>${escapeHtml(item.title)}</strong>${withReason && item.reason ? ` &mdash; ${escapeHtml(item.reason)}` : ''}</li>`).join('')}</ul>`;
+}
+
+function notionHref(site: SiteStatus, which: 'home' | 'posts' | 'pages'): string {
+  const links = site.notion ?? null;
+  const url = which === 'posts' ? links?.postsUrl : which === 'pages' ? links?.pagesUrl : links?.homeUrl;
+  return escapeHtml(url ?? links?.homeUrl ?? 'https://www.notion.so/');
+}
+
+function problemCard(problem: SiteProblem, site: SiteStatus, token: string | null): string {
+  const card = (heading: string, body: string, actions: string) =>
+    `<section class="card alert" aria-labelledby="problem-heading">
+<h2 id="problem-heading">${escapeHtml(heading)}</h2>
+${body}
+<div class="actions">${actions}</div>
+</section>`;
+  switch (problem.kind) {
+    case 'notion_missing':
+      return card(
+        'Finish setting up: connect Notion',
+        `<p>Your site is on the internet, but it is not connected to Notion yet, so it only shows sample text.</p>
+<p class="small muted">Notion will ask what to share. Choose the template option (“Use a template provided by the developer”). That adds your InkDrafts page, where you will write.</p>`,
+        postButton(token, '', 'Connect Notion', true, '/status/notion'),
+      );
+    case 'notion_access':
+      return card(
+        'InkDrafts lost access to your Notion',
+        `<p>Your site still shows its last version, but new changes cannot reach it. This happens when the InkDrafts connection is removed in Notion, or your InkDrafts page is no longer shared with it.</p>
+<p class="small muted">Notion will ask what to share. Choose “Select pages” and tick your InkDrafts page. Do not pick the template again: that would start a fresh copy with sample posts.</p>`,
+        postButton(token, '', 'Reconnect Notion', true, '/status/notion'),
+      );
+    case 'bulk_delete': {
+      const what = problem.section === 'pages' ? ['page', 'pages'] : ['post', 'posts'];
+      const heading = problem.count === null
+        ? `Your site would lose several ${what[1]}`
+        : `Your site would lose ${plural(problem.count, what[0], what[1])}`;
+      return card(
+        heading,
+        `<p>The latest update would take ${problem.count === 1 ? 'this' : 'these'} off your site, because ${problem.count === 1 ? 'it is' : 'they are'} no longer Published in Notion. We paused instead of removing so much at once.</p>
+${itemsList(problem.items, false)}
+<p class="small muted">Nothing is lost yet: your site still shows them. If you meant to remove them, confirm below. If not, set their Status back to Published in Notion.</p>`,
+        `${postButton(token, 'sync_allow_delete', 'Yes, remove them', false)}<a class="button primary" href="${notionHref(site, problem.section ?? 'posts')}">No, keep them</a>`,
+      );
+    }
+    case 'row_errors':
+      return card(
+        problem.count === 1 ? 'One row in Notion could not be published' : `${problem.count} rows in Notion could not be published`,
+        `${itemsList(problem.items, true)}
+<p>Everything else on your site is up to date. Fix ${problem.count === 1 ? 'that row' : 'those rows'} in Notion and press Update my site now, or wait for the next automatic update.</p>`,
+        `<a class="button primary" href="${notionHref(site, 'posts')}">Open Notion</a>${postButton(token, 'sync', 'Update my site now', false)}`,
+      );
+    case 'sync_failed':
+      return card(
+        'Your latest update did not finish',
+        '<p>Your site still shows its last version. This is usually temporary.</p><p class="small muted">If it keeps happening, <a href="/support">get help</a>.</p>',
+        postButton(token, 'sync', 'Try again', true),
+      );
+    case 'publish_failed':
+      return card(
+        'Your latest changes did not go live',
+        '<p>GitHub could not build the new version of your site, so it still shows the previous one.</p><p class="small muted">If it keeps happening, <a href="/support">get help</a>.</p>',
+        postButton(token, 'rebuild', 'Try again', true),
+      );
   }
 }
 
-function deployHtml(deploy: DeployOutcome): string {
-  switch (deploy.kind) {
-    case 'never_built':
-      return '<p>No publish has run yet.</p>';
-    case 'building':
-      return '<p class="ok">A publish is running right now.</p>';
-    case 'built':
-      return '<p class="ok">Your site was published.</p>';
-    case 'errored':
-      return '<p class="danger">The last publish failed. Publishing runs again after the next sync that changes your content.</p>';
+interface Headline {
+  readonly title: string;
+  readonly lede: string;
+}
+
+function headlineOf(site: SiteStatus, problem: SiteProblem | null, nowMs: number): Headline {
+  const sync = site.sync;
+  const finishedAt = sync.kind === 'never_ran' || sync.kind === 'running' ? null : sync.finishedAtMs;
+  if (problem?.kind === 'notion_missing') {
+    return { title: 'Finish setting up your site', lede: 'One step left: connect Notion, where you will write.' };
   }
+  if (problem?.kind === 'notion_access') {
+    return { title: 'Your site needs you', lede: 'InkDrafts can no longer read your Notion page.' };
+  }
+  if (problem !== null) {
+    return {
+      title: 'Your site needs a quick look',
+      lede: finishedAt === null ? 'Something went wrong with the latest update.' : `The latest update ran ${relativeTime(finishedAt, nowMs)}.`,
+    };
+  }
+  if (sync.kind === 'running') {
+    const started = sync.startedAtMs === null ? '' : ` Started ${relativeTime(sync.startedAtMs, nowMs)}.`;
+    return { title: 'Your site is updating', lede: `This usually takes 2 to 5 minutes.${started}` };
+  }
+  if (site.deploy.kind === 'never_built') {
+    return { title: 'Your site is being built', lede: 'It is usually ready in a few minutes. Refresh this page to check.' };
+  }
+  if (site.deploy.kind === 'building') {
+    return { title: 'Your site is updating', lede: 'Publishing your latest changes. This usually takes a minute or two.' };
+  }
+  const updated = finishedAt === null ? '' : `Updated ${relativeTime(finishedAt, nowMs)}. `;
+  return { title: 'Your site is up to date', lede: `${updated}Changes you make in Notion reach your site on their own, ${UPDATE_WAIT}.` };
 }
 
-function rerunFormHtml(token: string): string {
-  return `
-<form method="post" action="/status/rerun">
-<input type="hidden" name="token" value="${escapeHtml(token)}">
-<button class="cta" type="submit">Sync now</button>
-</form>
-<p class="muted">Runs the same sync your site runs on schedule. Limited to a few runs per day.</p>`;
+function siteLine(site: SiteStatus): string {
+  const url = escapeHtml(site.site.url);
+  const display = escapeHtml(site.site.url.replace(/^https?:\/\//u, ''));
+  if (site.deploy.kind === 'never_built') {
+    return `<div class="site-line"><span class="button primary" aria-disabled="true">Visit your site</span><span class="site-url">${display}</span></div>
+<p class="small muted">Your address is ready. The link works once the first publish finishes.</p>`;
+  }
+  return `<div class="site-line"><a class="button primary" href="${url}">Visit your site</a><span class="site-url">${display}</span></div>`;
 }
 
-function bodyOf(model: StatusPageModel, chrome: StatusPageChrome): string {
-  const notice = (key: NonNullable<StatusPageChrome['notice']>) => `<div class="notice"><p>${NOTICES[key]}</p></div>`;
+function latestUpdateCard(site: SiteStatus, problem: SiteProblem | null, token: string | null, nowMs: number): string {
+  const sync = site.sync;
+  let line: string;
+  if (sync.kind === 'never_ran') line = `<p>Your first update has not run yet. It runs on its own, ${UPDATE_WAIT}.</p>`;
+  else if (sync.kind === 'running' && site.runInFlight) {
+    line = `<p>An update is running now${sync.startedAtMs === null ? '' : `, started ${timeHtml(sync.startedAtMs, nowMs)}`}.</p>
+<div class="actions"><a class="button" href="/status">Refresh</a></div>`;
+  } else if (sync.kind === 'running') {
+    // Running for over an hour: GitHub lost track of it, so starting a fresh
+    // update is allowed and offered.
+    line = `<p>An update started${sync.startedAtMs === null ? '' : ` ${timeHtml(sync.startedAtMs, nowMs)}`} and has not finished. You can start a fresh one.</p>`;
+  } else {
+    const when = sync.finishedAtMs === null ? null : timeHtml(sync.finishedAtMs, nowMs);
+    const words = 'source' in sync && sync.kind !== 'failed' ? `<p>${escapeHtml(changesInWords(sync.pages, sync.posts))}</p>` : '';
+    line = sync.kind === 'failed'
+      ? `<p>The last update${when === null ? '' : `, ${when},`} did not finish.</p>`
+      : `<p>The last update finished${when === null ? '' : ` ${when}`}.</p>${words}`;
+  }
+  // While a fix is needed, the fix is the one button; Update now waits.
+  const button = site.runInFlight || problem !== null ? '' : `<div class="actions">${postButton(token, 'sync', 'Update my site now', false)}</div>`;
+  return `<section class="card" aria-labelledby="update-heading">
+<h2 id="update-heading">Updates from Notion</h2>
+${line}
+${button}
+<p class="small muted">Changes you make in Notion appear on their own, ${UPDATE_WAIT}. Up to 10 updates by hand per day.</p>
+</section>`;
+}
 
+function lookCard(site: SiteStatus): string {
+  const theme = site.themeName ? `<p>Your site uses the <strong>${escapeHtml(site.themeName)}</strong> design.</p>` : '<p>Change your site’s design, colors and fonts.</p>';
+  return `<section class="card" aria-labelledby="look-heading">
+<h2 id="look-heading">How it looks</h2>
+${theme}
+<div class="actions"><a class="button" href="/status/appearance">Change appearance</a></div>
+</section>`;
+}
+
+function detailsHtml(site: SiteStatus): string {
+  const sync = site.sync;
+  const runUrl = sync.kind === 'never_ran' ? null : sync.runUrl;
+  const detail = 'source' in sync && sync.detail ? `<p>Last update report: <code>${escapeHtml(sync.detail)}</code></p>` : '';
+  const fallback = site.summaryFallback === undefined ? '' : '<p>The last update’s report could not be read, so this page shows only whether it finished.</p>';
+  return `<details class="more">
+<summary>Technical details</summary>
+${detail}${fallback}
+${runUrl ? `<p><a href="${escapeHtml(runUrl)}">See the last update on GitHub</a></p>` : ''}
+<p>Your site’s files live in your GitHub account: <a href="${escapeHtml(site.repository.url)}">${escapeHtml(site.repository.name)}</a>. You never need to open it to write.</p>
+</details>`;
+}
+
+function metaHtml(login: string): string {
+  return `<div class="meta">
+<p>Signed in as ${escapeHtml(login)}. <a href="${CONNECT_URL}">Use a different GitHub account</a>.</p>
+<p>Want to stop using InkDrafts? Your site stays yours. <a href="/leaving">Leaving InkDrafts</a>.</p>
+</div>`;
+}
+
+function sessionBody(model: Extract<StatusPageModel, { kind: 'session' }>, chrome: StatusPageChrome, nowMs: number): { title: string; body: string } {
+  const site = model.site;
+  const problem = problemOf(site);
+  const headline = headlineOf(site, problem, nowMs);
+  const token = chrome.rerunFormToken;
+  const notices = [
+    chrome.notice === null ? '' : `<div class="notice" role="status"><p>${NOTICES[chrome.notice]}</p></div>`,
+    site.automaticUpdatesResumed ? '<div class="notice" role="status"><p>Automatic updates had paused after 60 quiet days. They are back on.</p></div>' : '',
+  ].join('');
+  const notionBroken = problem?.kind === 'notion_missing' || problem?.kind === 'notion_access';
+  const body = `<h1>${escapeHtml(headline.title)}</h1>
+<p class="lede">${escapeHtml(headline.lede)}</p>
+${siteLine(site)}
+${notices}
+${problem === null ? '' : problemCard(problem, site, token)}
+${notionBroken ? '' : writeInNotionCard(site.notion ?? null, { heading: 'Write in Notion', headingLevel: 2, onDashboard: true, updating: site.runInFlight || site.sync.kind === 'running' || problem !== null })}
+${problem?.kind === 'notion_missing' ? '' : latestUpdateCard(site, problem, token, nowMs)}
+${lookCard(site)}
+${detailsHtml(site)}
+${metaHtml(model.viewer.login)}`;
+  return { title: headline.title, body };
+}
+
+function signInButton(label = 'Sign in with GitHub'): string {
+  return `<div class="actions"><a class="button primary" href="${CONNECT_URL}">${escapeHtml(label)}</a></div>`;
+}
+
+function bodyOf(model: StatusPageModel, chrome: StatusPageChrome, nowMs: number): { title: string; body: string } {
+  const notice = chrome.notice === null ? '' : `<div class="notice" role="status"><p>${NOTICES[chrome.notice]}</p></div>`;
   switch (model.kind) {
     case 'entry':
-      return `
-${chrome.notice === 'signin_required' ? notice('signin_required') : ''}
-<p>This page shows your InkDrafts site&#39;s last sync and publish, and lets you run
-a sync by hand. Bookmark it: the link never expires.</p>
-<p>Because InkDrafts never stores your account binding, you sign in with GitHub
-once per browser session. GitHub remembers your grant, so the check is usually
-a quick redirect you barely notice.</p>
-<a class="cta" href="${CONNECT_URL}">Sign in with GitHub</a>`;
+      return {
+        title: 'Manage your site',
+        body: `<h1>Manage your site</h1>
+${chrome.notice === 'signin_required' ? notice : ''}
+<p class="lede">Sign in with the GitHub account you used to create your site. It is usually one click.</p>
+${signInButton()}
+<p>Here you can see whether your site is up to date, update it now, and change how it looks.</p>
+<p class="small muted">Bookmark this page to come back any time. No site yet? <a href="/">Create one for free</a>.</p>`,
+      };
 
     case 'session':
-      return `
-<p class="muted">Signed in as ${escapeHtml(model.viewer.login)}.</p>
-${chrome.notice === null ? '' : notice(chrome.notice)}
-<section class="card">
-<h2>Content sync</h2>
-${syncHtml(model.site.sync, model.site.summaryFallback)}
-</section>
-<section class="card">
-<h2>Publishing</h2>
-${deployHtml(model.site.deploy)}
-<p>Site: <a href="${escapeHtml(model.site.site.url)}">${escapeHtml(model.site.site.url)}</a><br>
-Repository: <a href="${escapeHtml(model.site.repository.url)}">${escapeHtml(model.site.repository.name)}</a></p>
-</section>
-<section class="card">
-<h2>Appearance</h2>
-<p>Change your site&#39;s theme, colors and fonts.</p>
-<p><a href="/status/appearance">Change appearance</a></p>
-</section>
-${model.site.runInFlight ? REFRESH_HTML : ''}
-${chrome.rerunFormToken === null ? '' : rerunFormHtml(chrome.rerunFormToken)}
-${DISCONNECT_HTML}`;
+      return sessionBody(model, chrome, nowMs);
 
     case 'no_site':
-      return `
-<p class="muted">Signed in as ${escapeHtml(model.viewer.login)}.</p>
-<p>No repository with the InkDrafts marker was found on this account. If you
-expected a site here, check that you signed in with the same GitHub account
-that set it up.</p>
-<p>If the repository was deleted, or its description was edited, InkDrafts can
-no longer recognize it. Set a site up again from the <a href="/">InkDrafts
-homepage</a>, or <a href="${CONNECT_URL}">sign in with a different GitHub
-account</a>.</p>
-${DISCONNECT_HTML}`;
+      return {
+        title: 'No site on this account',
+        body: `<h1>We could not find a site on this account</h1>
+<p class="lede">You are signed in as ${escapeHtml(model.viewer.login)}, and this GitHub account has no InkDrafts site.</p>
+<p>If you made your site with a different GitHub account, sign in with that one.</p>
+<div class="actions"><a class="button primary" href="${CONNECT_URL}">Sign in with another account</a><a class="button" href="/">Create a site</a></div>
+<p class="small muted">If your site’s files were deleted or renamed on GitHub, InkDrafts can no longer recognize them.</p>
+${metaHtml(model.viewer.login)}`,
+      };
 
     case 'installation_gone':
-      return `
-<p class="muted">Signed in as ${escapeHtml(model.viewer.login)}.</p>
-<p>The InkDrafts GitHub App is not installed for this account any more, so
-InkDrafts cannot see your site. Your repository and published site keep
-working on their own.</p>
-<p>To use InkDrafts again, set a site up again from the <a href="/">InkDrafts
-homepage</a>.</p>
-${DISCONNECT_HTML}`;
+      return {
+        title: 'InkDrafts cannot reach your site',
+        body: `<h1>InkDrafts can no longer reach your site</h1>
+<p class="lede">Signed in as ${escapeHtml(model.viewer.login)}. Your site keeps working on its own.</p>
+<p>InkDrafts was removed from your GitHub account, so this page cannot show or update your site. Add it back to manage your site here again. Your site and its content stay as they are.</p>
+<div class="actions"><a class="button primary" href="/connect">Reconnect InkDrafts</a></div>
+${metaHtml(model.viewer.login)}`,
+      };
 
     case 'installation_suspended':
-      return `
-<p class="muted">Signed in as ${escapeHtml(model.viewer.login)}.</p>
-<p>The InkDrafts GitHub App installation is suspended, so InkDrafts cannot see
-your site right now. Your repository and published site keep working on their
-own.</p>
-<p>To resume it, open GitHub&#39;s settings (Settings &#8594; Applications &#8594;
-Installed GitHub Apps &#8594; InkDrafts &#8594; Configure) and remove the suspension.</p>
-${DISCONNECT_HTML}`;
+      return {
+        title: 'InkDrafts is paused on your account',
+        body: `<h1>InkDrafts is paused on your GitHub account</h1>
+<p class="lede">Signed in as ${escapeHtml(model.viewer.login)}. Your site keeps working on its own.</p>
+<p>InkDrafts was suspended in your GitHub settings, so this page cannot update your site. To turn it back on, open GitHub’s settings, choose InkDrafts, and select Unsuspend.</p>
+<div class="actions"><a class="button primary" href="https://github.com/settings/installations">Open GitHub settings</a></div>
+${metaHtml(model.viewer.login)}`,
+      };
 
     case 'github_unavailable':
-      return `
-<p>GitHub did not answer, so your site status could not be read. Nothing is
-wrong with your site as far as anyone can tell from here.</p>
-<p class="muted">${model.retryAfterSeconds === null ? 'Try again in a moment.' : `Try again ${durationText(model.retryAfterSeconds)}.`}</p>
-<a class="cta" href="/status">Try again</a>`;
+      return {
+        title: 'GitHub is not answering',
+        body: `<h1>GitHub is not answering right now</h1>
+<p class="lede">We could not check your site, but nothing suggests anything is wrong with it.</p>
+<p>${model.retryAfterSeconds === null ? 'Try again in a moment.' : `Try again ${durationText(model.retryAfterSeconds)}.`}</p>
+<div class="actions"><a class="button primary" href="/status">Try again</a></div>`,
+      };
 
     case 'auth_failed':
-      return `
-<p>${model.reason === 'denied'
-        ? 'The GitHub sign-in was cancelled, so your site status could not be shown.'
-        : model.reason === 'no_installation'
-          ? 'You signed in, but the InkDrafts GitHub App is not installed on your personal GitHub account, so there is no site to show. Set a site up from the <a href="/">InkDrafts homepage</a> first.'
-          : 'The sign-in link was invalid, expired, or already used, so your site status could not be shown.'}</p>
-${model.reason === 'no_installation' ? '' : `<a class="cta" href="${CONNECT_URL}">Sign in again</a>`}`;
+      if (model.reason === 'no_installation') {
+        return {
+          title: 'No InkDrafts site on this account',
+          body: `<h1>There is no InkDrafts site on this GitHub account</h1>
+<p class="lede">You signed in, but InkDrafts was never added to this GitHub account.</p>
+<div class="actions"><a class="button primary" href="/">Create my site</a><a class="button" href="${CONNECT_URL}">Sign in with another account</a></div>`,
+        };
+      }
+      return {
+        title: model.reason === 'denied' ? 'Sign-in was cancelled' : 'That sign-in did not work',
+        body: `<h1>${model.reason === 'denied' ? 'Sign-in was cancelled' : 'That sign-in did not work'}</h1>
+<p class="lede">${model.reason === 'denied'
+          ? 'GitHub did not finish signing you in, so we cannot show your site yet.'
+          : 'The sign-in link expired or was already used. This happens if the page sat open for a while.'}</p>
+${signInButton('Sign in again')}`,
+      };
 
     default: {
       const never: never = model;
@@ -336,48 +412,25 @@ ${model.reason === 'no_installation' ? '' : `<a class="cta" href="${CONNECT_URL}
 }
 
 export function statusPage(model: StatusPageModel, chrome: StatusPageChrome): string {
-  const heading = PAGE_HEADINGS[model.kind];
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(heading)}</title>
-<style>${STYLES}</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to content</a>
-<main id="main-content">
-<h1>${escapeHtml(heading)}</h1>
-${bodyOf(model, chrome)}
-</main>
-</body>
-</html>`;
+  const { title, body } = bodyOf(model, chrome, chrome.nowMs ?? Date.now());
+  const owner = model.kind !== 'entry' && model.kind !== 'auth_failed' && model.kind !== 'github_unavailable';
+  return dashboardDocument({ title, body, owner });
 }
 
-/** A transient throttle or outage response: real copy and the retry hint,
- * outside the page-state union because it is not a state of the site. */
+/** A transient throttle or outage response: real copy, the retry hint and a
+ * way back, outside the page-state union because it is not a state of the
+ * site. */
 export function statusRefusalPage(options: {
   readonly title: string;
   readonly body: string;
   readonly retryAfterSeconds: number | null;
 }): string {
   const retry = options.retryAfterSeconds === null ? '' : `<p class="muted">Try again ${durationText(options.retryAfterSeconds)}.</p>`;
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(options.title)}</title>
-<style>${STYLES}</style>
-</head>
-<body>
-<main>
-<h1>${escapeHtml(options.title)}</h1>
-<p>${escapeHtml(options.body)}</p>
+  return dashboardDocument({
+    title: options.title,
+    body: `<h1>${escapeHtml(options.title)}</h1>
+<p class="lede">${escapeHtml(options.body)}</p>
 ${retry}
-</main>
-</body>
-</html>`;
+<div class="actions"><a class="button primary" href="/status">Back to your dashboard</a></div>`,
+  });
 }

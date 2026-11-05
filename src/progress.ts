@@ -17,7 +17,7 @@ import {
   type ProvisioningJob,
   type ProvisioningStepName,
 } from './provisioning-job';
-import { FAILURE_REGISTRY, userCopy, type ProvisioningFailureCode } from './failures';
+import { FAILURE_REGISTRY, userCopy } from './failures';
 import { findTheme } from './theme-catalog';
 
 export const PROGRESS_STAGE_ORDER = [
@@ -34,12 +34,12 @@ export interface ProgressStageEntry {
 
 export const PROGRESS_STAGE_REGISTRY: { [S in ProgressStageId]: ProgressStageEntry } = {
   github_connected: { label: 'Connect GitHub', headline: 'Connecting your GitHub account.' },
-  repository_created: { label: 'Create your repository', headline: 'Creating your repository.' },
-  notion_connected: { label: 'Connect Notion', headline: 'Connecting Notion.' },
-  settings_prepared: { label: 'Prepare site settings', headline: 'Preparing your site settings.' },
-  publishing_enabled: { label: 'Enable publishing', headline: 'Enabling GitHub Pages publishing.' },
-  content_synced: { label: 'Copy your content', headline: 'Copying your Notion content.' },
-  site_published: { label: 'Publish your site', headline: 'Publishing your site.' },
+  repository_created: { label: 'Make a home for your site', headline: 'Making a home for your site on GitHub.' },
+  notion_connected: { label: 'Connect Notion', headline: 'It takes about a minute. The rest runs by itself.' },
+  settings_prepared: { label: 'Set up your site', headline: 'Setting up your site.' },
+  publishing_enabled: { label: 'Turn on your website', headline: 'Turning on your website.' },
+  content_synced: { label: 'Copy your Notion pages', headline: 'Copying your Notion pages.' },
+  site_published: { label: 'Put your site online', headline: 'Putting your site online.' },
 };
 
 /** Machine step to public stage. A new step fails typecheck until it declares
@@ -54,7 +54,9 @@ export const STAGE_BY_STEP: { [S in ProvisioningStepName]: ProgressStageId } = {
   verify_deploy: 'site_published',
 };
 
-export type ProgressStageState = 'done' | 'current' | 'pending' | 'blocked';
+/** `your_turn`: the setup waits on the owner (the Notion consent), not on
+ * InkDrafts, so it must not look busy. */
+export type ProgressStageState = 'done' | 'current' | 'your_turn' | 'pending' | 'blocked';
 
 export interface ProgressStageView {
   readonly id: ProgressStageId;
@@ -63,7 +65,9 @@ export interface ProgressStageView {
 }
 
 export type PublicProgress =
-  | { readonly status: 'awaiting_notion'; readonly stages: readonly ProgressStageView[] }
+  | { readonly status: 'awaiting_notion'; readonly stages: readonly ProgressStageView[];
+      /** The owner already writes in Notion: share that page, not a new copy. */
+      readonly reconnect: boolean }
   | { readonly status: 'active'; readonly stages: readonly ProgressStageView[];
       readonly notice: { readonly message: string; readonly action: string } | null;
       readonly pollAfterSeconds: number | null }
@@ -79,7 +83,9 @@ export type PublicProgress =
       readonly appearanceNote: string | null }
   | { readonly status: 'failed'; readonly stages: readonly ProgressStageView[];
       readonly message: string; readonly action: string;
-      readonly restartUrl: string | null }
+      readonly restartUrl: string | null;
+      /** True when the failure is ours to retry from where it stopped. */
+      readonly canRetry: boolean }
   | { readonly status: 'missing'; readonly message: string; readonly action: string;
       readonly restartUrl: string };
 
@@ -93,12 +99,16 @@ export interface ProgressSnapshot {
 /** A wait is a stall the queue resolves on its own, never a failure, so it
  * gets its own sentence instead of taxonomy copy. */
 const WAIT_NOTICE: { readonly message: string; readonly action: string } = {
-  message: 'Your setup is waiting for a free provisioning slot and will continue automatically.',
-  action: 'No action is needed. This page updates itself.',
+  message: 'You are in line. Many sites are being set up right now.',
+  action: 'It continues by itself. No need to do anything.',
 };
 
-const MISSING_COPY = userCopy('provisioning_job_missing');
-const RESTART_URL = '/connect/github';
+const MISSING_COPY = {
+  message: 'This setup link has expired.',
+  action: 'If your site is already set up, manage it from your dashboard. If not, start again from the beginning.',
+};
+const RESTART_URL = '/connect';
+const TERMINAL_RETRY_ACTION = 'We tried several times and stopped. Press Try again to pick up where it stopped.';
 const LAST_STEP = PROVISIONING_STEP_ORDER[PROVISIONING_STEP_ORDER.length - 1];
 
 /** Stand-in for a job resolved before canonical-URL capture existed: every
@@ -113,7 +123,7 @@ const NULL_NOTION_LINKS: Extract<PublicProgress, { status: 'succeeded' }>['notio
  * themes at all, so that note promises no later switch. */
 export const APPEARANCE_SKIPPED_NOTES = {
   theme_unavailable: 'The theme you picked is not in this site’s repository, so your site keeps its current look.',
-  theme_invalid: 'Your site uses the default theme; change it any time from Status.',
+  theme_invalid: 'Your site uses the default design; change it any time from your dashboard.',
 } as const satisfies Record<AppearanceSkipReason, string>;
 
 /** Catalog names only: a stored id that left the catalog reads as invalid. */
@@ -122,7 +132,7 @@ function appearanceNoteOf(job: ProvisioningJob): string | null {
   const theme = findTheme(job.data.appearance.themeId);
   if (job.data.appearanceSkipped !== null) return APPEARANCE_SKIPPED_NOTES[job.data.appearanceSkipped];
   if (!theme) return APPEARANCE_SKIPPED_NOTES.theme_invalid;
-  return `Theme: ${theme.name}`;
+  return `Design: ${theme.name}`;
 }
 
 export function progressPageUrl(jobId: string): string {
@@ -133,18 +143,16 @@ function stageIndex(id: ProgressStageId): number {
   return PROGRESS_STAGE_ORDER.indexOf(id);
 }
 
-function stageViewsAt(currentIndex: number, blocked = false): ProgressStageView[] {
+function stageViewsAt(currentIndex: number, current: 'current' | 'blocked' | 'your_turn' = 'current'): ProgressStageView[] {
   return PROGRESS_STAGE_ORDER.map((id, index) => ({
     id,
     label: PROGRESS_STAGE_REGISTRY[id].label,
-    state: index < currentIndex ? 'done'
-      : index === currentIndex ? (blocked ? 'blocked' : 'current')
-        : 'pending',
+    state: index < currentIndex ? 'done' : index === currentIndex ? current : 'pending',
   }));
 }
 
-function stageViews(currentStageId: ProgressStageId, blocked = false): ProgressStageView[] {
-  return stageViewsAt(stageIndex(currentStageId), blocked);
+function stageViews(currentStageId: ProgressStageId, current: 'current' | 'blocked' | 'your_turn' = 'current'): ProgressStageView[] {
+  return stageViewsAt(stageIndex(currentStageId), current);
 }
 
 function failedStepOf(job: ProvisioningJob): ProvisioningStepName | null {
@@ -189,10 +197,13 @@ export function projectProvisioning(job: ProvisioningJob | null, now: number): P
       updatedAt: job.updatedAt,
       progress: {
         status: 'failed',
-        stages: stageViews(STAGE_BY_STEP[step], true),
+        stages: stageViews(STAGE_BY_STEP[step], 'blocked'),
         message: copy.message,
-        action: copy.action,
+        // A retryable code reached here only after its attempts ran out, so
+        // its "we'll keep trying" copy is no longer true.
+        action: FAILURE_REGISTRY[code].retryable ? TERMINAL_RETRY_ACTION : copy.action,
         restartUrl: FAILURE_REGISTRY[code].recovery === 'restart_flow' ? RESTART_URL : null,
+        canRetry: FAILURE_REGISTRY[code].recovery !== 'contact_support',
       },
     };
   }
@@ -201,10 +212,14 @@ export function projectProvisioning(job: ProvisioningJob | null, now: number): P
     // The secrets timestamp, not the status, says whether the Notion stage is
     // finished: a stale read may still show it as current, but a written job
     // never shows it as pending.
-    const current: ProgressStageId = job.data.notionSecretsWrittenAt ? 'settings_prepared' : 'notion_connected';
+    const written = Boolean(job.data.notionSecretsWrittenAt);
     return {
       updatedAt: job.updatedAt,
-      progress: { status: 'awaiting_notion', stages: stageViews(current) },
+      progress: {
+        status: 'awaiting_notion',
+        stages: written ? stageViews('settings_prepared') : stageViews('notion_connected', 'your_turn'),
+        reconnect: job.data.notionMode === 'reconnect',
+      },
     };
   }
 

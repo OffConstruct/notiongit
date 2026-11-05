@@ -239,12 +239,19 @@ describe('GET /status/appearance', () => {
       expect(response.headers.get('cache-control')).toBe('no-store');
       expect(response.headers.get('content-security-policy')).toContain("frame-src 'self'");
       const text = await response.text();
-      expect(text).toContain('Your site uses <strong>Classic</strong>');
+      expect(text).toContain('Your site uses the <strong>Classic</strong> design.');
       expect(text).toContain('src="/preview/classic/?t_mode=dark"');
       expect(text).toMatch(/name="t_mode" value="dark" checked>/u);
-      // The theme switcher sits above the editor; the save comes before the options.
+      // The switcher sits above the editor; Save comes after the options and names the design.
       expect(text.indexOf('id="theme-switch"')).toBeLessThan(text.indexOf('data-customizer'));
-      expect(text.indexOf('>Save</button>')).toBeLessThan(text.indexOf('options</legend>'));
+      expect(text.indexOf('options</legend>')).toBeLessThan(text.indexOf('>Save and publish Classic</button>'));
+      // Nothing is unsaved yet.
+      expect(text).toContain('<p class="unsaved" data-unsaved-cue hidden>Unsaved changes</p>');
+      expect(text).toContain('<a href="/status">&larr; Back to your dashboard</a>');
+      // The settings-file talk waits behind Advanced.
+      const advanced = text.indexOf('<summary>Advanced: edit the settings file by hand</summary>');
+      expect(advanced).toBeGreaterThan(-1);
+      expect(text.indexOf('_config.yml')).toBeGreaterThan(advanced);
       expect(text).toContain('href="https://github.com/alice/alice.github.io/edit/main/_config.yml"');
       expect(text).toContain('href="/status/appearance?theme=classic"');
       expect(text).not.toContain(`href="/status/appearance?theme=${OTHER.id}"`);
@@ -264,7 +271,10 @@ describe('GET /status/appearance', () => {
       const text = await response.text();
       expect(response.status).toBe(200);
       expect(text).toContain(`src="/preview/${OTHER.id}/?t_mode=dark"`);
-      expect(text).toContain('nothing changes until you save');
+      expect(text).toContain('Nothing changes on your site until you save.');
+      expect(text).toContain('<p class="unsaved" data-unsaved-cue>Unsaved changes</p>');
+      expect(text).toContain(`>Save and publish ${OTHER.name}</button>`);
+      expect(text).toContain('<a href="/status/appearance" data-unsaved-cue>Undo</a>');
     });
   });
 
@@ -308,6 +318,28 @@ describe('GET /status/appearance', () => {
 });
 
 describe('POST /status/appearance', () => {
+  test('a Save from a real browser (Origin: null, same-origin fetch) is accepted; a cross-site one is not', async () => {
+    const kv = new MemoryKV();
+    const env = await environment(kv);
+    await withGithub({ config: CONFIG, themes: ['classic'] }, async (github) => {
+      const fields = { token: await token(), theme: 'classic', t_mode: 'light' };
+      const browser = await save(env, fields, { Origin: 'null', 'Sec-Fetch-Site': 'same-origin' });
+      expect(browser.status).toBe(303);
+      expect(browser.headers.get('location')).toBe('https://example.com/status/appearance?saved=1');
+      expect(github.puts()).toHaveLength(1);
+      expect((await save(env, fields, { Origin: 'null', 'Sec-Fetch-Site': 'cross-site' })).status).toBe(403);
+      expect(github.puts()).toHaveLength(1);
+    });
+  });
+
+  test('the page asks the browser to send its origin with the form', async () => {
+    const env = await environment(new MemoryKV());
+    await withGithub({ config: CONFIG, themes: ['classic'] }, async () => {
+      const response = await route(new Request('https://example.com/status/appearance', { headers: { Cookie: await cookie() } }), env);
+      expect(response.headers.get('referrer-policy')).toBe('same-origin');
+    });
+  });
+
   test('gates refuse in order: origin, session, form token (a rerun token is not enough)', async () => {
     const kv = new MemoryKV();
     const env = await environment(kv);
@@ -315,9 +347,10 @@ describe('POST /status/appearance', () => {
       const fields = { token: await token(), theme: 'classic', t_mode: 'light' };
       expect((await save(env, fields, { Origin: 'https://evil.example' })).status).toBe(403);
 
+      // An expired session signs in again and comes back to the same choice.
       const signedOut = await route(new Request('https://example.com/status/appearance', { method: 'POST', body: new URLSearchParams(fields) }), env);
       expect(signedOut.status).toBe(303);
-      expect(signedOut.headers.get('location')).toBe('https://example.com/status?notice=signin_required');
+      expect(signedOut.headers.get('location')).toBe('https://example.com/status?connect=1&next=appearance&back=theme%3Dclassic%26t_mode%3Dlight');
 
       expect((await save(env, { ...fields, token: 'forged' })).status).toBe(403);
       expect((await save(env, { ...fields, token: await signRerunToken(VIEWER, SECRET) })).status).toBe(403);
@@ -384,7 +417,7 @@ describe('POST /status/appearance', () => {
 
     await withGithub({ config: CONFIG, themes: ['classic'] }, async () => {
       const saved = await route(new Request('https://example.com/status/appearance?saved=1', { headers: { Cookie: await cookie() } }), env);
-      expect(await saved.text()).toContain('Saved. GitHub Pages rebuilds your site in about a minute.');
+      expect(await saved.text()).toContain('Saved. Your site updates with the new look in about a minute.');
     });
   });
 

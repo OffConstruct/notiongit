@@ -41,6 +41,7 @@ export const NOTION_FAILURE_CODES = [
   'notion_unavailable',
   'notion_token_invalid',
   'notion_template_not_duplicated',
+  'notion_reconnect_page_unshared',
   'notion_template_root_invalid',
   'notion_template_root_unavailable',
   'notion_template_root_unshared',
@@ -186,7 +187,7 @@ const FLOW_FAILURES: { [C in FlowFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'This connection link is not valid.',
-      action: 'Start again from the dashboard to get a fresh link.',
+      action: 'Press the button below to start this step again.',
     },
     support: { area: 'platform', note: 'Job id failed the format check before any provider call.' },
   },
@@ -216,7 +217,7 @@ const FLOW_FAILURES: { [C in FlowFailureCode]: FailureDescriptor } = {
     httpStatus: 503,
     user: {
       message: 'Site setup is temporarily unavailable.',
-      action: 'Try again later or contact support if the problem continues.',
+      action: 'Try again later. If the problem continues, get help.',
     },
     support: { area: 'platform', note: 'Admission control configuration was invalid or unreadable.' },
   },
@@ -249,7 +250,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 500,
     user: {
       message: 'We cannot start the Notion connection right now because our own setup is incomplete.',
-      action: 'Wait a few minutes and try again. If it keeps happening, contact support.',
+      action: 'Wait a few minutes and try again. If it keeps happening, get help.',
     },
     support: { area: 'notion', note: 'Preflight found Notion client id, client secret, or jobs KV unset.' },
   },
@@ -259,7 +260,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'We could not match this Notion reply to a connection request.',
-      action: 'Start again from the dashboard to get a fresh link.',
+      action: 'Press the button below to start this step again.',
     },
     support: { area: 'notion', note: 'Callback arrived without a state parameter.' },
   },
@@ -269,7 +270,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'This Notion connection link has been altered or does not match our records.',
-      action: 'Start again from the dashboard to get a fresh link.',
+      action: 'Press the button below to start this step again.',
     },
     support: { area: 'notion', note: 'State signature or cookie check failed; stored state missing or mismatched.' },
   },
@@ -279,7 +280,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'This Notion connection link has expired.',
-      action: 'Start again from the dashboard to get a fresh link.',
+      action: 'Press the button below to start this step again.',
     },
     support: { area: 'notion', note: 'State was past its signed expiry when the callback arrived.' },
   },
@@ -289,7 +290,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'This Notion connection link was already used.',
-      action: 'Start again from the dashboard if you still need to connect.',
+      action: 'If you still need to connect, press the button below to start this step again.',
     },
     support: { area: 'notion', note: 'Replay marker hit; state was consumed by an earlier callback.' },
   },
@@ -309,7 +310,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'Notion sent us back without the approval we need.',
-      action: 'Start again from the dashboard to get a fresh link.',
+      action: 'Press the button below to start this step again.',
     },
     support: { area: 'notion', note: 'Callback carried neither a code nor an error parameter.' },
   },
@@ -319,7 +320,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'Notion refused our request to connect your workspace.',
-      action: 'Start again from the dashboard. If it keeps failing, contact support.',
+      action: 'Press the button below to try again. If it keeps failing, get help.',
     },
     support: { area: 'notion', note: 'Token exchange rejected by Notion with 400 or 401; credentials never echoed.' },
   },
@@ -329,7 +330,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 429,
     user: {
       message: 'Notion is temporarily limiting connection requests.',
-      action: 'Wait a minute, then start again from the dashboard.',
+      action: 'Wait a minute, then press the button below to try again.',
     },
     support: { area: 'notion', note: 'Notion token endpoint returned 429 during code exchange.' },
   },
@@ -339,7 +340,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'We could not reach Notion to finish connecting your workspace.',
-      action: 'Try again in a few minutes. If it still does not work, contact support.',
+      action: 'Try again in a few minutes. If it still does not work, get help.',
     },
     support: { area: 'notion', note: 'Fallback for uncoded Notion callback failures; no provider detail retained.' },
   },
@@ -349,7 +350,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'Notion\u2019s reply about your connection was incomplete, so we stopped safely.',
-      action: 'Start again from the dashboard. If it happens again, contact support.',
+      action: 'Press the button below to try again. If it happens again, get help.',
     },
     support: { area: 'notion', note: 'Token response was missing fields this connection requires.' },
   },
@@ -359,9 +360,19 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'Your Notion workspace does not have a copy of the InkDrafts template yet.',
-      action: 'Duplicate the InkDrafts template in Notion, then connect again.',
+      action: 'Connect Notion again, and this time choose \u201cUse a template provided by the developer\u201d when Notion asks what to share.',
     },
     support: { area: 'notion', note: 'Authorization carried no duplicated template reference; programmatic creation is deliberately unimplemented.' },
+  },
+  notion_reconnect_page_unshared: {
+    retryable: false,
+    recovery: { kind: 'user_action', action: 'duplicate_template_then_reconnect' },
+    httpStatus: 400,
+    user: {
+      message: 'InkDrafts could not find your site\u2019s page in Notion.',
+      action: 'Connect Notion again. When Notion asks what to share, choose \u201cSelect pages\u201d and tick the page your site is written in. A fresh template would start your site over.',
+    },
+    support: { area: 'notion', note: 'Reconnect authorization shared no page whose databases pass the template contract; a fresh duplicate is ignored so the live site keeps its content.' },
   },
   notion_template_root_invalid: {
     retryable: false,
@@ -379,7 +390,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'We could not open your duplicated Notion template yet.',
-      action: 'Wait a moment, then connect again. If it keeps failing, contact support.',
+      action: 'Wait a moment, then connect again. If it keeps failing, get help.',
     },
     support: { area: 'notion', note: 'Template root children still not visible after all retry attempts; usually propagation.' },
   },
@@ -389,7 +400,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 403,
     user: {
       message: 'InkDrafts is not allowed to open your duplicated Notion template.',
-      action: 'Make sure the template page is shared with InkDrafts in Notion, then connect again.',
+      action: 'Connect Notion again and make sure your InkDrafts page is ticked when Notion asks what to share.',
     },
     support: { area: 'notion', note: 'Template root read returned 403 right after duplication; connection lacks access to the page, or access was revoked.' },
   },
@@ -399,7 +410,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'Your duplicated Notion template opened, but its content is not showing yet.',
-      action: 'Wait a moment, then connect again. If it still looks empty, contact support.',
+      action: 'Wait a moment, then connect again. If it still looks empty, get help.',
     },
     support: { area: 'notion', note: 'Root was reachable but showed no child databases after all retry attempts.' },
   },
@@ -409,7 +420,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 422,
     user: {
       message: 'Your duplicated Notion template is missing a database we expect.',
-      action: 'Contact support so we can help you restore the template.',
+      action: 'Get help so we can help you restore the template.',
     },
     support: { area: 'notion', note: 'Every child database was fetched and identified; one role had no match.' },
   },
@@ -419,7 +430,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 422,
     user: {
       message: 'Your duplicated Notion template has unclear duplicate databases, so we stopped rather than guess.',
-      action: 'Contact support so we can help you fix the template.',
+      action: 'Get help so we can help you fix the template.',
     },
     support: { area: 'notion', note: 'A role matched multiple databases or one database matched multiple roles; never guessed between.' },
   },
@@ -429,7 +440,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 422,
     user: {
       message: 'The databases in your duplicated Notion template do not have the columns InkDrafts needs.',
-      action: 'Restore the template\u2019s databases in Notion, then connect again.',
+      action: 'Put back the Posts and Pages tables and their columns in your InkDrafts page (Notion\u2019s page history can restore them), then connect again.',
     },
     support: { area: 'notion', note: 'Database shape validation failed after fetch; non-secret remediation details are attached to the response body.' },
   },
@@ -439,7 +450,7 @@ const NOTION_FAILURES: { [C in NotionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'Some parts of your duplicated Notion template could not be read in time.',
-      action: 'Wait a moment, then connect again. If it keeps failing, contact support.',
+      action: 'Wait a moment, then connect again. If it keeps failing, get help.',
     },
     support: { area: 'notion', note: 'Found databases kept failing to fetch within the request\u2019s retry budget.' },
   },
@@ -472,7 +483,7 @@ const GITHUB_FAILURES: { [C in GithubFailureCode]: FailureDescriptor } = {
     httpStatus: 500,
     user: {
       message: 'We cannot start the GitHub connection right now because our own setup is incomplete.',
-      action: 'Wait a few minutes and try again. If it keeps happening, contact support.',
+      action: 'Wait a few minutes and try again. If it keeps happening, get help.',
     },
     support: { area: 'github', note: 'Preflight found GitHub app id, client id, client secret, jobs KV, or queue unset.' },
   },
@@ -482,7 +493,7 @@ const GITHUB_FAILURES: { [C in GithubFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'We could not match this GitHub reply to a connection request.',
-      action: 'Start again from the dashboard to get a fresh link.',
+      action: 'Press the button below to start this step again.',
     },
     support: { area: 'github', note: 'Callback arrived without a state parameter.' },
   },
@@ -492,7 +503,7 @@ const GITHUB_FAILURES: { [C in GithubFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'This GitHub connection link has been altered or does not match our records.',
-      action: 'Start again from the dashboard to get a fresh link.',
+      action: 'Press the button below to start this step again.',
     },
     support: { area: 'github', note: 'State signature check failed, or stored state missing or mismatched.' },
   },
@@ -502,7 +513,7 @@ const GITHUB_FAILURES: { [C in GithubFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'This GitHub connection link has expired.',
-      action: 'Start again from the dashboard to get a fresh link.',
+      action: 'Press the button below to start this step again.',
     },
     support: { area: 'github', note: 'State was past its signed expiry at callback time.' },
   },
@@ -512,7 +523,7 @@ const GITHUB_FAILURES: { [C in GithubFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'This GitHub connection link was already used.',
-      action: 'Start again from the dashboard if you still need to connect.',
+      action: 'If you still need to connect, press the button below to start this step again.',
     },
     support: { area: 'github', note: 'Replay marker hit; state phase consumed by an earlier callback.' },
   },
@@ -532,7 +543,7 @@ const GITHUB_FAILURES: { [C in GithubFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'GitHub refused our request to sign you in.',
-      action: 'Start again from the dashboard. If it keeps failing, contact support.',
+      action: 'Press the button below to try again. If it keeps failing, get help.',
     },
     support: { area: 'github', note: 'Code exchange or identity call rejected by GitHub with 400 or 401.' },
   },
@@ -552,7 +563,7 @@ const GITHUB_FAILURES: { [C in GithubFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'We could not confirm your GitHub account details before starting setup.',
-      action: 'Start again from the dashboard. If it happens again, contact support.',
+      action: 'Press the button below to try again. If it happens again, get help.',
     },
     support: { area: 'github', note: 'Defensive branch: identity was not established after the installation checks.' },
   },
@@ -562,7 +573,7 @@ const GITHUB_FAILURES: { [C in GithubFailureCode]: FailureDescriptor } = {
     httpStatus: 400,
     user: {
       message: 'GitHub sent an unexpected setup reply for this connection.',
-      action: 'Start again from the dashboard to get a fresh link.',
+      action: 'Press the button below to start this step again.',
     },
     support: { area: 'github', note: 'setup_action parameter present but not install or update.' },
   },
@@ -572,7 +583,7 @@ const GITHUB_FAILURES: { [C in GithubFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'We hit a problem talking to GitHub while connecting your account.',
-      action: 'Try again in a few minutes. If it still does not work, contact support.',
+      action: 'Try again in a few minutes. If it still does not work, get help.',
     },
     support: { area: 'github', note: 'Fallback for uncoded GitHub callback failures; no provider detail retained.' },
   },
@@ -672,7 +683,7 @@ const GITHUB_FAILURES: { [C in GithubFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'GitHub rejected our app\u2019s request to act on your account.',
-      action: 'Connect your GitHub account again. If it keeps failing, contact support.',
+      action: 'Connect your GitHub account again. If it keeps failing, get help.',
     },
     support: { area: 'github', note: 'App JWT or installation-token endpoint returned a 4xx status, including the revoked-installation 404 on token mint.' },
   },
@@ -705,7 +716,7 @@ const GENERATE_FAILURES: { [C in GenerateFailureCode]: FailureDescriptor } = {
     httpStatus: 409,
     user: {
       message: 'We could not find a free name for your new site\u2019s repository.',
-      action: 'Contact support and we\u2019ll help you get set up.',
+      action: 'Get help and we\u2019ll get you set up.',
     },
     support: { area: 'github', note: 'Every deterministic repository-name candidate was refused as taken.' },
   },
@@ -738,7 +749,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'We could not read your new site\u2019s settings file to prepare it.',
-      action: 'We\u2019ll keep trying automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Config file read or write failed transiently on the generated repository.' },
   },
@@ -758,7 +769,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 429,
     user: {
       message: 'GitHub is temporarily limiting requests while preparing your site\u2019s settings.',
-      action: 'We\u2019ll keep trying automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Config read or write rate-limited (including 403 with Retry-After); Retry-After is honored and rides the fresh-message transport.' },
   },
@@ -768,7 +779,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'Your site\u2019s settings file could not be understood, so we stopped rather than damage it.',
-      action: 'Contact support so we can repair the setup.',
+      action: 'Get help so we can repair the setup.',
     },
     support: { area: 'github', note: 'Config parse or shape check failed; retrying cannot repair the content.' },
   },
@@ -778,7 +789,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 404,
     user: {
       message: 'GitHub cannot find the main branch your site publishes from.',
-      action: 'Contact support so we can repair the setup.',
+      action: 'Get help so we can repair the setup.',
     },
     support: { area: 'github', note: 'Pages or repository lookup returned 404 for the expected branch.' },
   },
@@ -788,7 +799,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 422,
     user: {
       message: 'GitHub rejected your site\u2019s publishing settings.',
-      action: 'Contact support so we can fix the setup.',
+      action: 'Get help so we can fix the setup.',
     },
     support: { area: 'github', note: 'Pages create call refused as a bad request; build settings rejected.' },
   },
@@ -798,7 +809,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 403,
     user: {
       message: 'GitHub says InkDrafts no longer has permission to publish your site.',
-      action: 'Connect your GitHub account again to restore access. If it keeps failing, contact support.',
+      action: 'Connect your GitHub account again to restore access. If it keeps failing, get help.',
     },
     support: { area: 'github', note: 'Pages call returned 401 or 403; installation access likely revoked mid-flow.' },
   },
@@ -808,7 +819,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 429,
     user: {
       message: 'GitHub is temporarily limiting publishing requests for your site.',
-      action: 'We\u2019ll keep trying automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Pages create or status calls rate-limited; Retry-After honored when present.' },
   },
@@ -818,7 +829,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'We hit a problem turning on publishing for your new site.',
-      action: 'We\u2019ll keep trying automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Pages create or status calls failed transiently or returned unusable bodies.' },
   },
@@ -828,7 +839,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'We could not start the step that copies your Notion content into the new site.',
-      action: 'We\u2019ll keep trying automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Workflow dispatch failed before GitHub confirmed it; the recorded marker makes the retry correlate, not re-dispatch.' },
   },
@@ -838,7 +849,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 403,
     user: {
       message: 'GitHub says InkDrafts no longer has permission to run the content sync.',
-      action: 'Connect your GitHub account again to restore access. If it keeps failing, contact support.',
+      action: 'Connect your GitHub account again to restore access. If it keeps failing, get help.',
     },
     support: { area: 'github', note: 'Dispatch call returned 401; installation access likely revoked.' },
   },
@@ -848,7 +859,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 429,
     user: {
       message: 'GitHub is temporarily limiting the content-sync requests for your site.',
-      action: 'We\u2019ll keep trying automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Dispatch or run-list calls rate-limited; Retry-After honored when present.' },
   },
@@ -858,7 +869,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 504,
     user: {
       message: 'We started copying your Notion content but have not confirmed the copy started yet.',
-      action: 'We\u2019ll keep checking automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep checking automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Correlation window found no dispatched run before giving up; the dispatch marker makes the retry resume safely.' },
   },
@@ -868,7 +879,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 504,
     user: {
       message: 'Copying your Notion content is taking longer than expected.',
-      action: 'We\u2019ll keep checking automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep checking automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Dispatched run stayed unfinished through the poll budget.' },
   },
@@ -878,7 +889,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'The step that copies your Notion content into the new site ran and reported failure.',
-      action: 'Start again to run a fresh copy. If it fails the same way, contact support.',
+      action: 'Start again to run a fresh copy. If it fails the same way, get help.',
     },
     support: { area: 'github', note: 'Run concluded as failed; terminal because a retry would re-await the same concluded run, and a content fix needs a fresh flow to trigger a new sync.' },
   },
@@ -888,7 +899,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'We hit a problem while copying your Notion content into the new site.',
-      action: 'We\u2019ll keep trying automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Run-list or run reads failed transiently or returned unusable bodies.' },
   },
@@ -898,7 +909,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'GitHub tried to build your site and reported that the build failed.',
-      action: 'Contact support so we can look into the build.',
+      action: 'Get help so we can look into the build.',
     },
     support: { area: 'github', note: 'Pages build reported errored for this exact commit; a rebuild cannot fix a content-errored build.' },
   },
@@ -908,7 +919,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 504,
     user: {
       message: 'Your site\u2019s build is taking longer than expected.',
-      action: 'We\u2019ll keep checking automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep checking automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Build stayed unfinished through the poll budget.' },
   },
@@ -918,7 +929,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'We hit a problem while building your new site.',
-      action: 'We\u2019ll keep trying automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Head or build reads failed transiently or returned unusable bodies.' },
   },
@@ -928,7 +939,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 504,
     user: {
       message: 'We built your site but could not reach its address to confirm it is live.',
-      action: 'We\u2019ll keep trying automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Site verify fetch kept failing after the build reported done.' },
   },
@@ -938,7 +949,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'We could not get the key needed to store your site\u2019s secrets securely.',
-      action: 'We\u2019ll keep trying automatically. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Actions public-key read failed transiently; step not yet wired into the pipeline.' },
   },
@@ -948,7 +959,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'The key for storing your site\u2019s secrets looked wrong, so we stopped safely.',
-      action: 'Contact support so we can repair the setup.',
+      action: 'Get help so we can repair the setup.',
     },
     support: { area: 'github', note: 'Public-key shape was invalid; provisioning cannot proceed safely.' },
   },
@@ -958,7 +969,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'We could not store one of your site\u2019s secrets.',
-      action: 'We\u2019ll keep trying automatically; storing is safe to repeat. If setup does not finish, contact support.',
+      action: 'We\u2019ll keep trying automatically; storing is safe to repeat. If setup does not finish, get help.',
     },
     support: { area: 'github', note: 'Secret write failed; the write is idempotent.' },
   },
@@ -968,7 +979,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'Something went wrong on our side while setting up your site.',
-      action: 'We\u2019ll retry automatically. If it does not finish, contact support.',
+      action: 'We\u2019ll retry automatically. If it does not finish, get help.',
     },
     support: { area: 'platform', note: 'Unclassified throw inside a step; bounded by the per-step attempt ceiling.' },
   },
@@ -978,7 +989,7 @@ const PROVISION_FAILURES: { [C in ProvisionFailureCode]: FailureDescriptor } = {
     httpStatus: 502,
     user: {
       message: 'Your site\u2019s setup is still in progress.',
-      action: 'This step is taking longer than usual. Check back shortly; if it does not finish, contact support.',
+      action: 'This step is taking longer than usual. Check back shortly; if it does not finish, get help.',
     },
     support: {
       area: 'platform',

@@ -31,11 +31,12 @@ import {
   createProvisioningJob,
   isSucceededProvisioningJob,
   loadProvisioningJob,
+  requeueFailedJob,
   saveProvisioningJob,
   type NotionTemplateLinks,
 } from './provisioning-job';
 import { callbackFailure, codedFailureCode, FlowFailure, type ProvisioningFailureCode } from './failures';
-import { errorPageResponse, restartHrefFor } from './error-page';
+import { errorPageResponse, notFoundPage, restartHrefFor } from './error-page';
 import {
   assertUsablePersonalInstallation,
   exchangeGithubCode,
@@ -67,11 +68,13 @@ import {
   beginNotionAuthorization,
   finishNotionCallback,
   NotionOAuthError,
+  sharedTopLevelPageIds,
   type NotionOAuthContinuationHandler,
   type NotionOAuthErrorCode,
   type NotionOAuthRouteOptions,
 } from './notion-oauth';
 import {
+  normalizeNotionId,
   NotionTemplateError,
   resolveNotionTemplateDatabases,
   saveNotionTemplateResolution,
@@ -81,13 +84,21 @@ import { POLICY_PAGES } from './policy-pages';
 import { progressPageUrl, projectProvisioning } from './progress';
 import { progressPage, type SiteCheckOutcome } from './progress-page';
 import { checkPublicSiteReachable } from './site-deployment';
-import { isStatusCallbackState, statusCallback, statusHome, statusRerun } from './status';
+import {
+  isStatusCallbackState,
+  notionLinksCookie,
+  statusCallback,
+  statusConnectNotion,
+  statusHome,
+  statusRerun,
+} from './status';
 import { reportError } from './safe-serialize';
-import { parseAppearanceParams, parseStoredAppearance, type SiteAppearance } from './theme-catalog';
+import { parseAppearanceParams, parseStoredAppearance, tweakQuery, type SiteAppearance } from './theme-catalog';
 import { previewMissPage, themeDetailResponse, themesGalleryResponse } from './themes-page';
 import { previewRenderResponse } from './preview-render';
 import { appearanceHome, appearanceSave } from './appearance';
-import { pageHeaders, previewFallbackHeaders } from './http-headers';
+import { CONNECT_PATH, connectPageResponse } from './connect-page';
+import { isSameOriginPost, pageHeaders, previewFallbackHeaders } from './http-headers';
 export {
   createRepositoryWithRetry,
   GithubRepositoryApiError,
@@ -522,7 +533,7 @@ function failureResponse(failure: {
   status: number;
   retryAfterSeconds: number | null;
 }): Response {
-  return errorPageResponse({ ...failure, restartHref: restartHrefFor(failure.code, '/connect/github') });
+  return errorPageResponse({ ...failure, restartHref: restartHrefFor(failure.code, CONNECT_PATH) });
 }
 
 function html(document: string, status = 200): Response {
@@ -695,6 +706,19 @@ async function beginGithubInstall(request: Request, env: Partial<Env>): Promise<
   return Response.redirect(installationUrl.toString(), 302);
 }
 
+/** A signup restart keeps the design the visitor picked: the state record
+ * still holds it when GitHub sends them back without approval. */
+async function restartWithChosenTheme(encodedState: string | null, env: Partial<Env>): Promise<string> {
+  if (!encodedState || !env.JOBS || !env.GITHUB_CLIENT_SECRET) return CONNECT_PATH;
+  const payload = await verifyGithubState(encodedState, stateSecret(env as Pick<Env, 'GITHUB_CLIENT_SECRET'>));
+  if (!payload) return CONNECT_PATH;
+  const record = await env.JOBS.get<GithubStateRecord>(stateKey(payload.nonce), 'json').catch(() => null);
+  const appearance = record?.jobId === payload.jobId ? parseStoredAppearance(record.appearance) : null;
+  if (!appearance) return CONNECT_PATH;
+  const tweaks = tweakQuery(appearance);
+  return `${CONNECT_PATH}?theme=${encodeURIComponent(appearance.themeId)}${tweaks ? `&${tweaks}` : ''}`;
+}
+
 async function finishGithubCallback(request: Request, env: Partial<Env>): Promise<Response> {
   if (!env.JOBS || !env.GITHUB_APP_ID || !env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) {
     return failureResponse({ code: 'github_configuration_missing', status: 500, retryAfterSeconds: null });
@@ -709,7 +733,12 @@ async function finishGithubCallback(request: Request, env: Partial<Env>): Promis
     return statusCallback(request, env);
   }
   if (url.searchParams.has('error')) {
-    return failureResponse({ code: 'github_authorization_denied', status: 400, retryAfterSeconds: null });
+    return errorPageResponse({
+      code: 'github_authorization_denied',
+      status: 400,
+      retryAfterSeconds: null,
+      restartHref: await restartWithChosenTheme(encodedState, env),
+    });
   }
   if (!encodedState) return failureResponse({ code: 'github_state_missing', status: 400, retryAfterSeconds: null });
   const payload = await verifyGithubState(encodedState, stateSecret(env as Pick<Env, 'GITHUB_CLIENT_SECRET'>));
@@ -919,7 +948,7 @@ export function continueNotionOnboarding(
       throw new NotionOAuthError('notion_configuration_missing', 500);
     }
     const job = await loadProvisioningJob(env.JOBS, jobId);
-    if (!job) throw new NotionOAuthError('provisioning_job_missing', 409, { connect_url: '/connect/github' });
+    if (!job) throw new NotionOAuthError('provisioning_job_missing', 409, { connect_url: '/connect' });
     // Any later status means this job was already handed to the queue, so a
     // duplicate callback must not write secrets or enqueue it again.
     if (job.status !== 'awaiting_notion') return;
@@ -938,15 +967,23 @@ export function continueNotionOnboarding(
     if (!ready.data.notionSecretsWrittenAt) {
       let notionLinks: NotionTemplateLinks | null = null;
       try {
-        if (!duplicatedTemplateId) throw new NotionTemplateError('notion_template_not_duplicated', 400);
         // Resolved fresh every time, never from the stored record: a second
         // authorization duplicates the template again, so the stored database
         // IDs can belong to the previous duplicate and would pair this token
         // with databases the user is no longer writing in.
-        const resolution = await resolveNotionTemplateDatabases(accessToken.raw, duplicatedTemplateId, {
-          fetcher: runtime.fetcher,
-          sleep: runtime.sleep,
-        });
+        // A reconnect keeps the live site's page: a template duplicated by
+        // mistake would rebind the site to sample content and hold back
+        // every existing post as a deletion.
+        const reconnect = job.data.notionMode === 'reconnect';
+        const resolution = duplicatedTemplateId && !reconnect
+          ? await resolveNotionTemplateDatabases(accessToken.raw, duplicatedTemplateId, {
+            fetcher: runtime.fetcher,
+            sleep: runtime.sleep,
+          })
+          : await resolveSharedInkdraftsPage(accessToken.raw, runtime, {
+            exclude: duplicatedTemplateId,
+            missing: reconnect ? 'notion_reconnect_page_unshared' : 'notion_template_not_duplicated',
+          });
         // Only the API-returned canonical URLs travel with the job record —
         // never the database IDs, which remain server-side sync credentials.
         notionLinks = {
@@ -1027,6 +1064,31 @@ export function continueNotionOnboarding(
 }
 
 /**
+ * The owner shared existing pages instead of duplicating the template (the
+ * reconnect path, or a signup that skipped the template). The first shared
+ * page whose databases pass the template's schema contract is theirs; with
+ * none, the failure is the same "choose the template" guidance as before.
+ * One attempt per candidate: these pages already exist, so there is no
+ * duplication delay to wait out.
+ */
+async function resolveSharedInkdraftsPage(
+  accessToken: string,
+  runtime: { fetcher?: typeof fetch; sleep?: (milliseconds: number) => Promise<void> },
+  options: { exclude: string | null; missing: 'notion_template_not_duplicated' | 'notion_reconnect_page_unshared' },
+) {
+  const excluded = options.exclude ? normalizeNotionId(options.exclude) : null;
+  for (const pageId of await sharedTopLevelPageIds(accessToken, runtime.fetcher)) {
+    if (excluded !== null && normalizeNotionId(pageId) === excluded) continue;
+    try {
+      return await resolveNotionTemplateDatabases(accessToken, pageId, { fetcher: runtime.fetcher, sleep: runtime.sleep, maxAttempts: 1 });
+    } catch (error) {
+      if (!(error instanceof NotionTemplateError)) throw error;
+    }
+  }
+  throw new NotionTemplateError(options.missing, 400);
+}
+
+/**
  * Notion authorization is the second half of onboarding, so it only starts
  * for a job the GitHub callback already created. Without this an old
  * bookmark walks the user through a full Notion consent for a job that can
@@ -1064,7 +1126,63 @@ async function progressPageResponse(request: Request, env: Partial<Env>): Promis
     : null;
   // An absent, malformed, or unknown id renders the same missing page; only
   // the status differs, so a bookmark of an expired job still reads as gone.
-  return html(progressPage(jobId, projectProvisioning(job, Date.now()), siteCheck), job ? 200 : 404);
+  const response = html(progressPage(jobId, projectProvisioning(job, Date.now()), siteCheck), job ? 200 : 404);
+  // The success page leaves the owner's Notion links in this browser, so the
+  // status page can offer them later without InkDrafts storing them.
+  const links = succeeded?.data.notionLinks;
+  if (succeeded && links && env.GITHUB_CLIENT_SECRET) {
+    const cookie = await notionLinksCookie(succeeded.data.generatedRepository.fullName, {
+      homeUrl: links.templateRootUrl,
+      postsUrl: links.postsUrl,
+      pagesUrl: links.pagesUrl,
+    }, env.GITHUB_CLIENT_SECRET);
+    if (cookie) response.headers.append('Set-Cookie', cookie);
+  }
+  return response;
+}
+
+/**
+ * `POST /progress/retry`: the owner's "Try again" on a stopped setup. The
+ * job id is the capability, as on every progress route; the same admission
+ * gates as a fresh start apply, so a retry cannot outrun the account's
+ * attempt window or the shared GitHub budget.
+ */
+async function progressRetryResponse(request: Request, env: Partial<Env>): Promise<Response> {
+  if (!isSameOriginPost(request)) return failureResponse({ code: 'github_state_invalid', status: 403, retryAfterSeconds: null });
+  if (!env.JOBS || !env.PROVISIONING_QUEUE || !env.GITHUB_CLIENT_SECRET) {
+    return failureResponse({ code: 'github_configuration_missing', status: 500, retryAfterSeconds: null });
+  }
+  const form = await request.formData().catch(() => null);
+  const jobId = form?.get('job_id');
+  if (typeof jobId !== 'string' || !validJobId(jobId)) return failureResponse({ code: 'invalid_job_id', status: 400, retryAfterSeconds: null });
+  const back = new Response(null, { status: 303, headers: { Location: new URL(progressPageUrl(jobId), request.url).toString() } });
+  const job = await loadProvisioningJob(env.JOBS, jobId);
+  if (!job || (job.status !== 'failed' && job.status !== 'dead_letter')) return back;
+  // The page hides Try again when a retry cannot help; a stale page or a
+  // hand-made POST gets the same answer.
+  const projected = projectProvisioning(job, Date.now()).progress;
+  if (projected.status !== 'failed' || !projected.canRetry) return back;
+
+  const config = provisioningAdmissionConfig(env);
+  const burst = await admitProvisioningRequest(env as Env, config, { request, jobId, hmacSecret: env.GITHUB_CLIENT_SECRET }, Date.now());
+  if (burst.action !== 'allow') return admissionResponse(burst);
+  const account = await admitProvisioningAccount(env as Env, config, { accountId: job.identity.id, jobId }, Date.now());
+  if (account.action !== 'allow') return admissionResponse(account);
+  const start = await acquireProvisioningStart(env.JOBS, { accountId: job.identity.id, jobId }, provisioningThrottleConfig(env), Date.now());
+  if (!start.granted) {
+    if (start.reason === 'account_busy' && start.activeJobId !== null && start.activeJobId !== jobId) {
+      return new Response(null, { status: 303, headers: { Location: new URL(progressPageUrl(start.activeJobId), request.url).toString() } });
+    }
+    return failureResponse({ code: 'github_rate_limited', status: 429, retryAfterSeconds: start.retryAfterSeconds });
+  }
+  await saveProvisioningJob(env.JOBS, requeueFailedJob(job, Date.now()));
+  try {
+    await env.PROVISIONING_QUEUE.send({ jobId });
+  } catch {
+    return failureResponse({ code: 'provisioning_enqueue_failed', status: 502, retryAfterSeconds: null });
+  }
+  emitProvisioningEvent({ type: 'job_queued', jobId, ts: Date.now() });
+  return back;
 }
 
 async function progressSiteCheckResponse(request: Request, env: Partial<Env>): Promise<Response> {
@@ -1102,7 +1220,11 @@ export function route(
     return new Response(null, { status: 301, headers: { Location: url.toString() } });
   }
 
-  if (request.method === 'GET' && url.pathname === '/') {
+  // Page routes answer HEAD like GET (link checkers and link previews probe
+  // with HEAD); routes with side effects stay GET-only.
+  const read = request.method === 'GET' || request.method === 'HEAD';
+
+  if (read && url.pathname === '/') {
     return new Response(LANDING_PAGE, { headers: pageHeaders(LANDING_PAGE_HEADERS) });
   }
 
@@ -1110,9 +1232,18 @@ export function route(
     return json({ ok: true, service: 'notiongit' });
   }
 
+  const canonical = read ? canonicalPath(url.pathname) : null;
+  if (canonical !== null) {
+    return new Response(null, { status: 301, headers: { Location: `${canonical}${url.search}` } });
+  }
+
   const policy = POLICY_PAGES[url.pathname];
-  if (request.method === 'GET' && policy) {
+  if (read && policy) {
     return html(policy.document);
+  }
+
+  if (read && url.pathname === CONNECT_PATH) {
+    return connectPageResponse(request);
   }
 
   if (request.method === 'GET' && url.pathname === '/connect/github') {
@@ -1143,6 +1274,14 @@ export function route(
     return statusRerun(request, env);
   }
 
+  if (request.method === 'POST' && url.pathname === '/status/notion') {
+    return statusConnectNotion(request, env);
+  }
+
+  if (request.method === 'POST' && url.pathname === '/progress/retry') {
+    return progressRetryResponse(request, env);
+  }
+
   if (request.method === 'GET' && url.pathname === '/status/appearance') {
     return appearanceHome(request, env);
   }
@@ -1151,17 +1290,17 @@ export function route(
     return appearanceSave(request, env);
   }
 
-  if (request.method === 'GET' && (url.pathname === '/themes' || url.pathname === '/themes/')) {
+  if (read && url.pathname === '/themes') {
     return themesGalleryResponse(request);
   }
 
   const themeDetail = url.pathname.match(/^\/themes\/([a-z]{2,24})\/?$/u);
-  if (request.method === 'GET' && themeDetail) {
+  if (read && themeDetail) {
     return themeDetailResponse(request, themeDetail[1]);
   }
 
   const previewRender = url.pathname.match(/^\/preview\/([a-z]{2,24})\/$/u);
-  if (request.method === 'GET' && previewRender) {
+  if (read && previewRender) {
     return previewRenderResponse(request, previewRender[1], env.ASSETS);
   }
 
@@ -1180,6 +1319,10 @@ export function route(
     return finishNotionCallback(request, env, options);
   }
 
+  // A browser gets a page with a way forward; an API client keeps JSON.
+  if (read && (request.headers.get('Accept') ?? '').includes('text/html')) {
+    return html(notFoundPage(), 404);
+  }
   return json(
     {
       error: 'not_found',
@@ -1187,6 +1330,20 @@ export function route(
     },
     404,
   );
+}
+
+/** One address per page: single slashes, no trailing slash (`/status/`,
+ * `/privacy/`) and lowercase theme ids (`/themes/Verso`). Preview paths keep
+ * their trailing slash. */
+function canonicalPath(pathname: string): string | null {
+  // Collapse repeated slashes first: a Location of `//host` is
+  // protocol-relative and would send the visitor off-site.
+  let path = pathname.replace(/\/{2,}/gu, '/');
+  const keepsSlash = path.startsWith('/preview/') || path.startsWith('/previews/') || path.startsWith('/assets/');
+  if (!keepsSlash && path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+  const theme = path.match(/^\/themes\/([A-Za-z]{2,24})$/u);
+  if (theme && theme[1] !== theme[1].toLowerCase()) path = `/themes/${theme[1].toLowerCase()}`;
+  return path === pathname ? null : path;
 }
 
 const worker: ExportedHandler<Env, ProvisioningMessage> = {

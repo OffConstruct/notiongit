@@ -64,14 +64,33 @@ function themeName(offered: readonly CatalogTheme[], appearance: SiteAppearance)
 }
 
 function signedInLine(site: AppearanceSite): string {
-  return `<p class="muted">Signed in as ${escapeHtml(site.login)}. Site: <a href="${escapeHtml(site.siteUrl)}">${escapeHtml(site.siteUrl)}</a> &middot; <a href="/status">Back to your site</a></p>`;
+  return `<p class="back"><a href="/status">&larr; Back to your dashboard</a></p>
+<p class="muted">Your site: <a href="${escapeHtml(site.siteUrl)}">${escapeHtml(site.siteUrl.replace(/^https?:\/\//u, ''))}</a></p>`;
 }
+
+function sameAppearance(a: SiteAppearance, b: SiteAppearance): boolean {
+  if (a.themeId !== b.themeId) return false;
+  const keys = new Set([...Object.keys(a.tweaks), ...Object.keys(b.tweaks)]);
+  return [...keys].every((key) => a.tweaks[key] === b.tweaks[key]);
+}
+
+/** The save bar sits after the options and sticks to the bottom of the
+ * screen while they scroll. `[data-unsaved-cue]` is the hook the customizer
+ * script toggles as choices change; without it the server's own comparison
+ * shows. */
+const APPEARANCE_STYLES = `<style>
+  .save-bar { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; margin: 1.25rem 0 0; padding: 0.85rem 0; background: var(--bg); border-top: 1px solid var(--border); }
+  .save-bar p { margin: 0; }
+  .save-bar .unsaved { font: 600 0.9rem/1.4 var(--sans); color: var(--accent); }
+  .tweak-form > fieldset > .tweak:last-child { border-bottom: 0; }
+  details + details { border-top: 0; margin-top: -2rem; }
+</style>`;
 
 const TITLE = 'Your site’s appearance | InkDrafts';
 
 function predatesBody(site: AppearanceSite): string {
-  return `<h1>Your site’s appearance</h1>
-${signedInLine(site)}
+  return `${signedInLine(site)}
+<h1>Your site’s appearance</h1>
 <p>Your site was set up before InkDrafts had themes, so <a href="${escapeHtml(site.repositoryUrl)}">its repository</a> does not include them. It keeps its original look and keeps working as it is.</p>
 <p>Switching an existing site to a theme is not available yet. You can browse the <a href="/themes">theme gallery</a> to see what is coming.</p>`;
 }
@@ -80,7 +99,7 @@ function editorBody(model: Extract<AppearancePageModel, { kind: 'editor' }>): st
   const theme = model.offered.find((candidate) => candidate.id === model.selected.themeId) ?? model.offered[0];
   if (!theme) return predatesBody(model.site);
   const notice = model.notice === 'saved'
-    ? `<div class="notice" role="status"><p>Saved. GitHub Pages rebuilds your site in about a minute. <a href="${escapeHtml(model.site.siteUrl)}">View your site</a>.</p></div>`
+    ? `<div class="notice" role="status"><p>Saved. Your site updates with the new look in about a minute. <a href="${escapeHtml(model.site.siteUrl)}">Visit your site</a>.</p></div>`
     : model.notice === 'unchanged'
       ? '<div class="notice" role="status"><p>Nothing changed: your site already uses these settings.</p></div>'
       : '';
@@ -90,14 +109,17 @@ function editorBody(model: Extract<AppearancePageModel, { kind: 'editor' }>): st
     headingLevel: 3,
     current: candidate.id === theme.id,
   })).join('\n');
-  return `<h1>Your site’s appearance</h1>
+  const dirty = !sameAppearance(model.selected, model.current);
+  return `${APPEARANCE_STYLES}
 ${signedInLine(model.site)}
+<h1>Your site’s appearance</h1>
 ${notice}${error}
-<p>Your site uses <strong>${escapeHtml(themeName(model.offered, model.current))}</strong>.${theme.id === model.current.themeId ? '' : ` You are previewing <strong>${escapeHtml(theme.name)}</strong>; nothing changes until you save.`}</p>
+<p>Your site uses the <strong>${escapeHtml(themeName(model.offered, model.current))}</strong> design.${theme.id === model.current.themeId ? '' : ` You are trying <strong>${escapeHtml(theme.name)}</strong>. Nothing changes on your site until you save.`}</p>
 <form class="switcher" method="get" action="/status/appearance">
-<div><label for="theme-switch">Theme</label>
+<div><label for="theme-switch">Design</label>
 <select id="theme-switch" name="theme">${themeOptionsHtml(model.offered, theme.id)}</select></div>
-<button type="submit">Show this theme</button>
+<button type="submit" data-theme-switch-submit>Show this design</button>
+<p class="small"><a href="#all-designs">See every design with pictures</a></p>
 </form>
 <div class="detail">
 <div class="preview-pin">
@@ -106,26 +128,28 @@ ${previewFrameHtml(theme, model.selected)}
 <form class="tweak-form" method="post" action="/status/appearance" data-customizer>
 <input type="hidden" name="token" value="${escapeHtml(model.formToken)}">
 <input type="hidden" name="theme" value="${escapeHtml(theme.id)}">
-<div class="actions">
-<button type="submit" class="primary">Save</button>
-<button type="submit" formmethod="get" formaction="/status/appearance" data-js-hidden>Preview</button>
-</div>
 <fieldset>
 <legend>${escapeHtml(theme.name)} options</legend>
 ${tweakFieldsHtml(theme, model.selected)}
 </fieldset>
-<p class="muted">Saving commits one change to the <code>inkdrafts:</code> block of your repository’s <code>_config.yml</code>. Nothing else in the file changes.</p>
+<div class="save-bar">
+<p class="unsaved" data-unsaved-cue${dirty ? '' : ' hidden'}>Unsaved changes</p>
+<button type="submit" class="primary">Save and publish ${escapeHtml(theme.name)}</button>
+<button type="submit" formmethod="get" formaction="/status/appearance" data-js-hidden>Preview</button>
+<a href="/status/appearance" data-unsaved-cue${dirty ? '' : ' hidden'}>Undo</a>
+</div>
+<p class="muted">Your site updates with the new look about a minute after you save.</p>
 </form>
 </div>
 ${customizerDataHtml(theme)}
 <details>
-<summary>Edit by hand</summary>
-<p>Replace the <code>inkdrafts:</code> block in <code>_config.yml</code> with:</p>
+<summary>Advanced: edit the settings file by hand</summary>
+<p>Saving changes one part of your site’s settings file (the <code>inkdrafts:</code> block of <code>_config.yml</code>). Nothing else in the file changes. To make the same change by hand, replace that block with:</p>
 ${yamlBlockHtml(renderAppearanceBlock(model.selected))}
 <p><a href="${escapeHtml(editUrl(model.site))}">Open _config.yml on GitHub</a></p>
 </details>
-<details>
-<summary>Browse every theme</summary>
+<details id="all-designs" open>
+<summary>Every design</summary>
 <ul class="theme-grid">
 ${cards}
 </ul>
@@ -135,8 +159,8 @@ ${cards}
 export function appearancePage(model: AppearancePageModel): string {
   switch (model.kind) {
     case 'editor':
-      return pageShell({ title: TITLE, scripts: [PREVIEW_STAGE_SCRIPT, CUSTOMIZER_SCRIPT], body: editorBody(model) });
+      return pageShell({ title: TITLE, header: { owner: true }, scripts: [PREVIEW_STAGE_SCRIPT, CUSTOMIZER_SCRIPT], body: editorBody(model) });
     case 'predates_themes':
-      return pageShell({ title: TITLE, body: predatesBody(model.site) });
+      return pageShell({ title: TITLE, header: { owner: true }, body: predatesBody(model.site) });
   }
 }

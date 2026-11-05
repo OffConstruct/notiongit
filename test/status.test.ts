@@ -30,10 +30,14 @@ import {
   STATUS_STATE_COOKIE,
   STATUS_STATE_TTL_SECONDS,
   verifyStatusState,
+  notionLinksCookie,
+  readNotionLinks,
+  NOTION_LINKS_COOKIE,
   type SiteDiscovery,
   type StatusSession,
 } from '../src/status';
-import { statusPage } from '../src/status-page';
+import { changesInWords, statusPage } from '../src/status-page';
+import { loadProvisioningJob } from '../src/provisioning-job';
 
 class MemoryKV {
   private values = new Map<string, string>();
@@ -147,6 +151,7 @@ function okDiscovery(overrides: {
   syncRun?: NotionSyncRunIdentity | null;
   summary?: SiteDiscovery extends { ok: true } ? SiteDiscovery['summary'] : never;
   build?: GithubPagesBuildIdentity | null;
+  themeName?: string;
 } = {}): SiteDiscovery {
   return {
     ok: true,
@@ -155,6 +160,7 @@ function okDiscovery(overrides: {
     syncRun: overrides.syncRun === undefined ? syncRun() : overrides.syncRun,
     summary: overrides.summary === undefined ? null : overrides.summary,
     build: overrides.build === undefined ? BUILD_BUILT : overrides.build,
+    ...(overrides.themeName ? { themeName: overrides.themeName } : {}),
   };
 }
 
@@ -264,6 +270,10 @@ describe('projectSiteStatus', () => {
         },
         deploy: { kind: 'built', commitSha: 'head-sha' },
         runInFlight: false,
+        notion: null,
+        notionConnected: null,
+        themeName: null,
+        automaticUpdatesResumed: false,
       },
     });
   });
@@ -314,8 +324,10 @@ describe('projectSiteStatus', () => {
       },
     });
     const html = statusPage(view, { notice: null, rerunFormToken: null });
-    expect(html).toContain('pages: 1 created');
-    expect(html).toContain('Pages: 1 created, 2 updated, 3 renamed, 4 deleted, 5 unchanged, 6 errors');
+    // Counts read as words, non-zero only; the raw report waits in the details.
+    expect(html).toContain('<p>1 new page, 2 pages changed, 3 pages renamed, 4 pages taken down, 6 pages could not be updated.</p>');
+    expect(html).not.toContain('unchanged');
+    expect(html).toContain('Last update report: <code>pages: 1 created</code>');
   });
 
   test('only a summary can produce no_op', () => {
@@ -340,8 +352,7 @@ describe('projectSiteStatus', () => {
   test('summary fallback reasons reach the rendered page', () => {
     const view = projectSiteStatus(okDiscovery({ summary: { ok: false, reason: 'malformed' } }), SESSION, NOW);
     const html = statusPage(view, { notice: null, rerunFormToken: null });
-    expect(html).toContain('The saved summary could not be read.');
-    expect(html).toContain('Derived from the workflow run result');
+    expect(html).toContain('The last update’s report could not be read, so this page shows only whether it finished.');
   });
 
   test('any terminal non-success conclusion degrades to failed carrying the raw string', () => {
@@ -370,7 +381,11 @@ describe('projectSiteStatus', () => {
       site: { sync: { kind: 'never_ran' }, deploy: { kind: 'never_built' }, runInFlight: false },
     });
     const html = statusPage(view, { notice: null, rerunFormToken: null });
-    expect(html).toContain('Your site also syncs on a schedule, though GitHub can delay a scheduled run by hours under load.');
+    // Not published yet: the address is shown but the link waits for the first publish.
+    expect(html).toContain('<h1>Your site is being built</h1>');
+    expect(html).toContain('<span class="button primary" aria-disabled="true">Visit your site</span>');
+    expect(html).not.toContain('>Visit your site</a>');
+    expect(html).toContain('Your first update has not run yet.');
   });
 
   test('a building or errored latest build renders its own deploy arm', () => {
@@ -659,7 +674,7 @@ describe('status routes', () => {
     }, async (requests) => {
       const response = await route(new Request('https://example.com/status'), env);
       expect(response.status).toBe(200);
-      expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+      expect(response.headers.get('referrer-policy')).toBe('same-origin');
       expect(await response.text()).toContain('Sign in with GitHub');
       expect(kv.puts).toBe(0);
       expect(requests).toEqual([]);
@@ -761,7 +776,7 @@ describe('status routes', () => {
         env,
       );
       expect(response.status).toBe(200);
-      expect(await response.text()).toContain('InkDrafts no longer has access');
+      expect(await response.text()).toContain('InkDrafts can no longer reach your site');
       expect(requests).toHaveLength(1);
     });
   });
@@ -838,7 +853,7 @@ describe('status routes', () => {
       env,
     );
     expect(denied.status).toBe(400);
-    expect(await denied.text()).toContain('Sign-in did not complete');
+    expect(await denied.text()).toContain('Sign-in was cancelled');
     expect(setCookieValues(denied).some((cookie) => cookie.startsWith(`${STATUS_STATE_COOKIE}=;`))).toBe(true);
 
     const validState = `https://example.com/auth/github/callback?state=${encodeURIComponent(state)}&code=code`;
@@ -849,7 +864,7 @@ describe('status routes', () => {
     )).status).toBe(400);
     const noCookie = await route(new Request(validState), env);
     expect(noCookie.status).toBe(400);
-    expect(await noCookie.text()).toContain('Sign-in did not complete');
+    expect(await noCookie.text()).toContain('That sign-in did not work');
 
     await withScriptedFetch((request) => {
       if (request.method === 'POST' && request.url === 'https://github.com/login/oauth/access_token') {
@@ -886,7 +901,7 @@ describe('status routes', () => {
       env,
     );
     expect(statusLeg.status).toBe(400);
-    expect(await statusLeg.text()).toContain('Sign-in did not complete');
+    expect(await statusLeg.text()).toContain('That sign-in did not work');
 
     const foreign = await signStatusState(statusStatePayload(Math.floor(Date.now() / 1000)), 'other-key');
     const installLeg = await route(
@@ -1069,7 +1084,7 @@ describe('status routes', () => {
         env,
       );
       expect(response.status).toBe(200);
-      expect(await response.text()).toContain('We could not find an InkDrafts site');
+      expect(await response.text()).toContain('We could not find a site on this account');
       expect(kv.value(statusRerunKey(42))).toBeUndefined();
       expect(requests.find((request) => request.url.includes('/dispatches'))).toBeUndefined();
     });
@@ -1220,7 +1235,8 @@ describe('status routes', () => {
     }, async () => {
       const page = await route(new Request('https://example.com/status', { headers: { Cookie: cookie } }), env);
       const html = await page.text();
-      expect(html).toContain('A sync is running right now');
+      expect(html).toContain('and has not finished. You can start a fresh one.');
+      expect(html).toContain('>Update my site now</button>');
       expect(html).not.toContain('http-equiv="refresh"');
       expect(html).not.toContain('>Refresh</a>');
     });
@@ -1260,12 +1276,12 @@ describe('status routes', () => {
         env,
       );
       expect(settled.status).toBe(200);
-      expect(settled.headers.get('referrer-policy')).toBe('no-referrer');
+      expect(settled.headers.get('referrer-policy')).toBe('same-origin');
       const html = await settled.text();
-      expect(html).toContain('Your site');
-      expect(html).toContain('alice');
-      expect(html).toContain('https://alice.github.io');
-      expect(html).toContain('Derived from the workflow run result');
+      expect(html).toContain('<h1>Your site is up to date</h1>');
+      expect(html).toContain('Signed in as alice');
+      expect(html).toContain('<a class="button primary" href="https://alice.github.io">Visit your site</a>');
+      expect(html).toContain('<h2 id="write-heading">Write in Notion</h2>');
       expect(html).not.toContain('http-equiv="refresh"');
       expect(html).not.toContain('987654');
       expect(html).not.toContain('installation-token');
@@ -1304,8 +1320,7 @@ describe('status routes', () => {
     }, async () => {
       const response = await route(new Request('https://example.com/status', { headers: { Cookie: cookie } }), env);
       const html = await response.text();
-      expect(html).toContain('Last hand-triggered sync succeeded');
-      expect(html).toContain('Derived from the workflow run result');
+      expect(html).toContain('The last update finished');
     });
   });
 
@@ -1340,5 +1355,330 @@ describe('status routes', () => {
       expect(unavailable.status).toBe(200);
       expect(await unavailable.text()).toContain('GitHub is not answering');
     });
+  });
+});
+
+
+/** A healthy site whose latest run left this summary, with optional extra routes. */
+function siteWithSummary(summary: Record<string, unknown>, extra: FetchHandler = () => healthySiteHandler(new Request('https://x.invalid'))) {
+  return (request: Request): Response | Promise<Response> => {
+    if (request.url.includes('/actions/runs/555/artifacts?')) {
+      return Response.json({ artifacts: [{ id: 9, name: 'notiongit-run-summary', expired: false }] });
+    }
+    if (request.url.includes('/actions/artifacts/9/zip')) return new Response(storedZip(JSON.stringify(summary)));
+    const scripted = extra(request);
+    if (scripted instanceof Response && scripted.status !== 500) return scripted;
+    return healthySiteHandler(request);
+  };
+}
+
+/** A stored (uncompressed) zip with one run-summary.json entry. */
+function storedZip(text: string): Uint8Array {
+  const name = new TextEncoder().encode('run-summary.json');
+  const data = new TextEncoder().encode(text);
+  const local = new Uint8Array(30 + name.length + data.length);
+  const lv = new DataView(local.buffer);
+  lv.setUint32(0, 0x04034b50, true);
+  lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true); lv.setUint16(26, name.length, true);
+  local.set(name, 30); local.set(data, 30 + name.length);
+  const central = new Uint8Array(46 + name.length);
+  const cv = new DataView(central.buffer);
+  cv.setUint32(0, 0x02014b50, true);
+  cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true); cv.setUint16(28, name.length, true);
+  central.set(name, 46);
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, 1, true); ev.setUint16(10, 1, true);
+  ev.setUint32(12, central.length, true); ev.setUint32(16, local.length, true);
+  const out = new Uint8Array(local.length + central.length + end.length);
+  out.set(local, 0); out.set(central, local.length); out.set(end, local.length + central.length);
+  return out;
+}
+
+async function statusHtmlFor(handler: FetchHandler, extraCookie = ''): Promise<{ html: string; requests: RecordedRequest[] }> {
+  const env = await statusEnvWithAppKey(new MemoryKV());
+  const cookie = `${await sessionCookie()}${extraCookie}`;
+  return withScriptedFetch(handler, async (requests) => {
+    const response = await route(new Request('https://example.com/status', { headers: { Cookie: cookie } }), env);
+    return { html: await response.text(), requests };
+  });
+}
+
+describe('owner forms in a real browser', () => {
+  // Chrome sends `Origin: null` on a form POST from a page served with
+  // Referrer-Policy: no-referrer, and on a POST that crossed a redirect.
+  test('Sync now accepts Origin null only when the browser says the request is same-origin', async () => {
+    const kv = new MemoryKV();
+    const env = await statusEnvWithAppKey(kv);
+    const token = await signRerunToken(VIEWER, 'client-secret');
+    const cookie = await sessionCookie();
+    const post = (headers: Record<string, string>) => route(new Request('https://example.com/status/rerun', {
+      method: 'POST',
+      headers: { Cookie: cookie, ...headers },
+      body: new URLSearchParams({ token }),
+    }), env);
+    await withScriptedFetch(healthySiteHandler, async () => {
+      const sameOrigin = await post({ Origin: 'null', 'Sec-Fetch-Site': 'same-origin' });
+      expect(sameOrigin.status).toBe(303);
+      expect(sameOrigin.headers.get('location')).toBe('https://example.com/status?notice=sync_triggered');
+    });
+    await withScriptedFetch(healthySiteHandler, async (requests) => {
+      expect((await post({ Origin: 'null', 'Sec-Fetch-Site': 'cross-site' })).status).toBe(403);
+      expect((await post({ Origin: 'null' })).status).toBe(403);
+      expect(requests.filter((request) => request.url.includes('/dispatches'))).toHaveLength(0);
+    });
+  });
+
+  test('pages with forms ask the browser to send their origin', async () => {
+    const env = await statusEnvWithAppKey(new MemoryKV());
+    const cookie = await sessionCookie();
+    await withScriptedFetch(healthySiteHandler, async () => {
+      const response = await route(new Request('https://example.com/status', { headers: { Cookie: cookie } }), env);
+      expect(response.headers.get('referrer-policy')).toBe('same-origin');
+    });
+  });
+});
+
+describe('the status page as the owner\'s home', () => {
+  test('leads with an up-to-date headline in relative time, Visit your site, and Write in Notion', () => {
+    const view = projectSiteStatus(okDiscovery({ themeName: 'Verso' }), SESSION, NOW);
+    const finished = Date.parse(UPDATED_AT);
+    const html = statusPage(view, { notice: null, rerunFormToken: 'tok', nowMs: finished + 2 * 60 * 60 * 1000 });
+    expect(html).toContain('<h1>Your site is up to date</h1>');
+    expect(html).toContain('Updated 2 hours ago. Changes you make in Notion reach your site on their own, usually within 20 minutes.');
+    expect(html).toMatch(/<time datetime="[^"]+" title="\d{4}-\d\d-\d\d \d\d:\d\d UTC">2 hours ago<\/time>/u);
+    expect(html).toContain('<a class="button primary" href="https://alice.github.io">Visit your site</a>');
+    expect(html).toContain('<h2 id="write-heading">Write in Notion</h2>');
+    expect(html).toContain('Set <strong>Status</strong> to <strong>Published</strong>');
+    expect(html).toContain('Your site uses the <strong>Verso</strong> design.');
+    expect(html).toContain('<a class="button" href="/status/appearance">Change appearance</a>');
+    expect(html).toContain('<button class="button" type="submit">Update my site now</button>');
+    expect(html).toContain('<a href="/leaving">Leaving InkDrafts</a>');
+    expect(html).not.toContain('revoke the InkDrafts OAuth');
+    // The tab names the product.
+    expect(html).toContain('<title>Your site is up to date | InkDrafts</title>');
+    expect(html.indexOf('Visit your site')).toBeLessThan(html.indexOf('write-heading'));
+  });
+
+  test('change counts read as words and skip zeros', () => {
+    expect(changesInWords(
+      { created: 0, updated: 1, renamed: 0, deleted: 0, unchanged: 2, errors: 0 },
+      { created: 1, updated: 0, renamed: 0, deleted: 0, unchanged: 1, errors: 0 },
+    )).toBe('1 new post, 1 page changed.');
+    expect(changesInWords(null, { created: 0, updated: 0, renamed: 0, deleted: 0, unchanged: 4, errors: 0 }))
+      .toBe('Nothing had changed in Notion.');
+  });
+
+  test('the Notion links this browser saved at setup become the card\'s buttons, for this site only', async () => {
+    const links = {
+      homeUrl: 'https://www.notion.so/alice/Home-1',
+      postsUrl: 'https://www.notion.so/alice/Posts-2',
+      pagesUrl: 'https://evil.example/not-notion',
+    };
+    const set = await notionLinksCookie('alice/alice.github.io', links, 'client-secret');
+    expect(set).toContain('HttpOnly; Secure; SameSite=Lax');
+    const value = set!.split(';')[0]!.slice(NOTION_LINKS_COOKIE.length + 1);
+    const request = new Request('https://example.com/status', { headers: { Cookie: `${NOTION_LINKS_COOKIE}=${value}` } });
+    expect(await readNotionLinks(request, 'alice/alice.github.io', 'client-secret')).toEqual({
+      homeUrl: links.homeUrl, postsUrl: links.postsUrl, pagesUrl: null,
+    });
+    expect(await readNotionLinks(request, 'mallory/mallory.github.io', 'client-secret')).toBeNull();
+    expect(await readNotionLinks(request, 'alice/alice.github.io', 'other-secret')).toBeNull();
+
+    const { html } = await statusHtmlFor(healthySiteHandler, `; ${NOTION_LINKS_COOKIE}=${value}`);
+    expect(html).toContain('<a class="button primary" href="https://www.notion.so/alice/Home-1">Open my page in Notion</a>');
+    expect(html).toContain('<a class="button" href="https://www.notion.so/alice/Posts-2">Write a new post</a>');
+    expect(html).not.toContain('evil.example');
+  });
+
+  test('without saved links the card opens Notion and says where to look', async () => {
+    const { html } = await statusHtmlFor(healthySiteHandler);
+    expect(html).toContain('<a class="button primary" href="https://www.notion.so/">Open Notion</a>');
+    expect(html).toContain('It starts out named “InkDrafts starter site”.');
+  });
+
+  test('the latest run from any trigger is shown, so a failed scheduled run is not hidden', async () => {
+    const { html, requests } = await statusHtmlFor((request) => {
+      if (request.url.includes('/actions/workflows/sync-notion.yml/runs')) {
+        return Response.json({ workflow_runs: [{ ...COMPLETED_RUN, event: 'schedule', conclusion: 'failure' }] });
+      }
+      return healthySiteHandler(request);
+    });
+    const runReads = requests.filter((request) => request.url.includes('/sync-notion.yml/runs'));
+    expect(runReads.length).toBeGreaterThan(0);
+    for (const read of runReads) expect(read.url).not.toContain('event=');
+    expect(html).toContain('Your latest update did not finish');
+    expect(html).toContain('<input type="hidden" name="action" value="sync"><button class="button primary" type="submit">Try again</button>');
+  });
+
+  test('lost Notion access says so in plain words and offers Reconnect Notion, not Sync now', async () => {
+    const { html } = await statusHtmlFor(siteWithSummary({
+      schema_version: 1, result: 'failure', code: 'sync_error',
+      detail: 'sync failed: Error querying pages database: Could not find database with ID: [redacted].',
+      pages: null, posts: null,
+    }));
+    expect(html).toContain('<h2 id="problem-heading">InkDrafts lost access to your Notion</h2>');
+    expect(html).toContain('<form method="post" action="/status/notion">');
+    expect(html).toContain('>Reconnect Notion</button>');
+    expect(html).toContain('Choose “Select pages” and tick your InkDrafts page.');
+    expect(html).not.toContain('>Update my site now</button>');
+    expect(html).not.toContain('write-heading');
+  });
+
+  test('a guarded bulk delete names what would go and asks before removing it', async () => {
+    const { html } = await statusHtmlFor(siteWithSummary({
+      schema_version: 1, result: 'failure', code: 'bulk_delete_guard',
+      detail: 'bulk-delete guard tripped for posts: would delete 3 of 4 tracked (75%)',
+      pages: null, posts: null,
+      affected: [{ section: 'posts', title: 'Trip to <Lisbon>' }, { section: 'posts', title: 'Garden notes' }, { section: 'posts', title: 'Hello' }],
+    }));
+    expect(html).toContain('<h2 id="problem-heading">Your site would lose 3 posts</h2>');
+    expect(html).toContain('<li><strong>Trip to &lt;Lisbon&gt;</strong></li>');
+    expect(html).toContain('<input type="hidden" name="action" value="sync_allow_delete"><button class="button" type="submit">Yes, remove them</button>');
+    expect(html).toContain('>No, keep them</a>');
+  });
+
+  test('Yes, remove them dispatches with bulk delete allowed, only while the guard is the latest result', async () => {
+    const guarded = siteWithSummary({
+      schema_version: 1, result: 'failure', code: 'bulk_delete_guard',
+      detail: 'bulk-delete guard tripped for posts: would delete 3 of 4 tracked (75%)', pages: null, posts: null,
+    });
+    const confirm = async (handler: FetchHandler) => {
+      const env = await statusEnvWithAppKey(new MemoryKV());
+      const token = await signRerunToken(VIEWER, 'client-secret');
+      return withScriptedFetch(handler, async (requests) => {
+        const response = await route(new Request('https://example.com/status/rerun', {
+          method: 'POST',
+          headers: { Origin: 'https://example.com', Cookie: await sessionCookie() },
+          body: new URLSearchParams({ token, action: 'sync_allow_delete' }),
+        }), env);
+        return { response, dispatches: requests.filter((request) => request.url.endsWith('/dispatches')) };
+      });
+    };
+    const allowed = await confirm(guarded);
+    expect(allowed.response.headers.get('location')).toBe('https://example.com/status?notice=delete_confirmed');
+    expect(JSON.parse(allowed.dispatches[0]!.bodyText)).toEqual({ ref: 'main', inputs: { allow_bulk_delete: 'true' } });
+
+    const stale = await confirm(healthySiteHandler);
+    expect(stale.response.headers.get('location')).toBe('https://example.com/status');
+    expect(stale.dispatches).toHaveLength(0);
+  });
+
+  test('row errors name the row and why', async () => {
+    const { html } = await statusHtmlFor(siteWithSummary({
+      schema_version: 1, result: 'failure', code: 'row_errors', detail: 'posts: 1 error',
+      pages: { created: 0, updated: 0, renamed: 0, deleted: 0, unchanged: 3, errors: 0 },
+      posts: { created: 0, updated: 0, renamed: 0, deleted: 0, unchanged: 3, errors: 1 },
+      affected: [{ section: 'posts', title: 'My trip', reason: 'The Publish Date is empty.' }],
+    }));
+    expect(html).toContain('One row in Notion could not be published');
+    expect(html).toContain('<li><strong>My trip</strong> &mdash; The Publish Date is empty.</li>');
+  });
+
+  test('a known sync reason code reads in the dashboard\'s own words', async () => {
+    const { html } = await statusHtmlFor(siteWithSummary({
+      schema_version: 1, result: 'failure', code: 'row_errors', detail: 'posts: 1 error',
+      pages: { created: 0, updated: 0, renamed: 0, deleted: 0, unchanged: 3, errors: 0 },
+      posts: { created: 0, updated: 0, renamed: 0, deleted: 0, unchanged: 3, errors: 1 },
+      affected: [{ section: 'posts', title: 'My trip', reason_code: 'duplicate_web_address', reason: 'slug collides' }],
+    }));
+    expect(html).toContain('<li><strong>My trip</strong> &mdash; Another post already uses the same web address.');
+    expect(html).not.toContain('slug collides');
+  });
+
+  test('a failed publish offers Try again, which asks GitHub to rebuild the site', async () => {
+    const errored = (request: Request) => request.url.includes('/pages/builds/latest')
+      ? Response.json({ status: 'errored', commit: 'head-sha' })
+      : request.method === 'POST' && request.url.endsWith('/pages/builds')
+        ? Response.json({ status: 'queued' }, { status: 201 })
+        : healthySiteHandler(request);
+    const { html } = await statusHtmlFor(errored);
+    expect(html).toContain('Your latest changes did not go live');
+    expect(html).toContain('<input type="hidden" name="action" value="rebuild"><button class="button primary" type="submit">Try again</button>');
+
+    const env = await statusEnvWithAppKey(new MemoryKV());
+    const token = await signRerunToken(VIEWER, 'client-secret');
+    await withScriptedFetch(errored, async (requests) => {
+      const response = await route(new Request('https://example.com/status/rerun', {
+        method: 'POST',
+        headers: { Origin: 'https://example.com', Cookie: await sessionCookie() },
+        body: new URLSearchParams({ token, action: 'rebuild' }),
+      }), env);
+      expect(response.headers.get('location')).toBe('https://example.com/status?notice=rebuild_triggered');
+      expect(requests.some((request) => request.method === 'POST' && request.url === 'https://api.github.com/repos/alice/alice.github.io/pages/builds')).toBe(true);
+      expect(requests.some((request) => request.url.endsWith('/dispatches'))).toBe(false);
+    });
+  });
+
+  test('a site never connected to Notion gets Finish setup: connect Notion', async () => {
+    const { html } = await statusHtmlFor((request) => request.url.includes('/actions/secrets?')
+      ? Response.json({ total_count: 0, secrets: [] })
+      : healthySiteHandler(request));
+    expect(html).toContain('<h1>Finish setting up your site</h1>');
+    expect(html).toContain('<h2 id="problem-heading">Finish setting up: connect Notion</h2>');
+    expect(html).toContain('“Use a template provided by the developer”');
+    expect(html).toContain('>Connect Notion</button>');
+  });
+
+  test('Connect or Reconnect Notion opens a setup for the existing site and lands on its progress page', async () => {
+    for (const [secrets, reconnect] of [[[], false], [[{ name: 'NOTION_TOKEN' }], true]] as const) {
+      const kv = new MemoryKV();
+      const env = await statusEnvWithAppKey(kv);
+      const token = await signRerunToken(VIEWER, 'client-secret');
+      await withScriptedFetch((request) => request.url.includes('/actions/secrets?')
+        ? Response.json({ secrets })
+        : healthySiteHandler(request), async () => {
+        const response = await route(new Request('https://example.com/status/notion', {
+          method: 'POST',
+          headers: { Origin: 'null', 'Sec-Fetch-Site': 'same-origin', Cookie: await sessionCookie() },
+          body: new URLSearchParams({ token }),
+        }), env);
+        expect(response.status).toBe(303);
+        const jobId = new URL(response.headers.get('location')!).searchParams.get('job_id')!;
+        const job = await loadProvisioningJob(kv as unknown as KVNamespace, jobId);
+        expect(job).toMatchObject({
+          status: 'awaiting_notion',
+          installationId: 987654,
+          identity: { id: 42, login: 'alice' },
+          data: { generatedRepository: { fullName: 'alice/alice.github.io' }, repository: { url: 'https://alice.github.io' } },
+        });
+        expect(job!.data.notionMode).toBe(reconnect ? 'reconnect' : undefined);
+      });
+    }
+  });
+
+  test('automatic updates that GitHub paused after 60 quiet days are switched back on', async () => {
+    const { html, requests } = await statusHtmlFor((request) => {
+      if (request.method === 'GET' && request.url.endsWith('/actions/workflows/sync-notion.yml')) return Response.json({ state: 'disabled_inactivity' });
+      if (request.method === 'PUT' && request.url.endsWith('/actions/workflows/sync-notion.yml/enable')) return new Response(null, { status: 204 });
+      return healthySiteHandler(request);
+    });
+    expect(requests.some((request) => request.method === 'PUT' && request.url.endsWith('/sync-notion.yml/enable'))).toBe(true);
+    expect(html).toContain('Automatic updates had paused after 60 quiet days. They are back on.');
+
+    const active = await statusHtmlFor((request) => request.url.endsWith('/actions/workflows/sync-notion.yml')
+      ? Response.json({ state: 'active' })
+      : healthySiteHandler(request));
+    expect(active.requests.some((request) => request.method === 'PUT')).toBe(false);
+    expect(active.html).not.toContain('60 quiet days');
+  });
+
+  test('signed out, the page says which account to use in one plain line', async () => {
+    const env = await statusEnvWithAppKey(new MemoryKV());
+    const html = await (await route(new Request('https://example.com/status'), env)).text();
+    expect(html).toContain('Sign in with the GitHub account you used to create your site. It is usually one click.');
+    expect(html).not.toContain('account binding');
+  });
+
+  test('an appearance choice survives the sign-in leg in the signed state', async () => {
+    const env = await statusEnvWithAppKey(new MemoryKV());
+    const response = await route(new Request('https://example.com/status?connect=1&next=appearance&back=theme%3Dverso%26t_mode%3Ddark'), env);
+    const state = new URL(response.headers.get('location')!).searchParams.get('state')!;
+    const payload = await verifyStatusState(state, 'client-secret', Math.floor(Date.now() / 1000));
+    expect(payload).toMatchObject({ next: 'appearance', q: 'theme=verso&t_mode=dark' });
+    // Anything the catalog rejects never rides along.
+    const junk = await route(new Request('https://example.com/status?connect=1&next=appearance&back=theme%3Dnope'), env);
+    const junkState = new URL(junk.headers.get('location')!).searchParams.get('state')!;
+    expect((await verifyStatusState(junkState, 'client-secret', Math.floor(Date.now() / 1000)))?.q).toBeUndefined();
   });
 });

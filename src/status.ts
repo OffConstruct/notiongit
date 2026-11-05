@@ -21,13 +21,15 @@ import {
 import { userCopy, type ProvisioningFailureCode } from './failures';
 import {
   dispatchNotionSyncWorkflow,
+  enableSyncWorkflow,
   GithubSyncError,
-  latestDispatchedSyncRun,
   latestSyncRun,
   latestSyncRunSummary,
+  syncWorkflowState,
   type NotionSyncRunIdentity,
 } from './notion-sync';
 import {
+  acquireProvisioningStart,
   admitProvisioningRequest,
   admitProvisioningStage,
   consumeGlobalMutationBudget,
@@ -36,6 +38,14 @@ import {
   withKeyLock,
   type ProvisioningThrottleVars,
 } from './provisioning-throttle';
+import { hasNotionTokenSecret } from './actions-secrets';
+import { GithubPagesError, requestPagesBuild } from './github-pages';
+import { readRepositoryConfig } from './repository-config';
+import { findTheme, parseAppearanceParams, readAppearanceBlock, tweakQuery } from './theme-catalog';
+import { isSameOriginPost, pageHeaders } from './http-headers';
+import { isNotionUrl, type NotionPageLinks } from './dashboard-shell';
+import { createProvisioningJob, saveProvisioningJob } from './provisioning-job';
+import { progressPageUrl } from './progress';
 import { emitProvisioningEvent } from './observability';
 import {
   findReusableGeneratedRepository,
@@ -102,22 +112,34 @@ function isStatusNextPage(value: unknown): value is StatusNextPage {
 }
 
 /** Authorize-leg state. The `k` kind marks it so an install-state token can
- * never verify as a status payload. */
+ * never verify as a status payload. `q` carries an unsaved appearance choice
+ * (canonical `theme=…&t_…` query) through a sign-in, so a Save that found
+ * the session expired returns to the same choice instead of losing it. */
 export interface StatusStatePayload {
   v: 1;
   k: typeof STATE_KIND;
   nonce: string;
   exp: number;
   next?: StatusNextPage;
+  q?: string;
 }
 
-export function statusStatePayload(nowSeconds: number, next?: StatusNextPage): StatusStatePayload {
+/** Canonical appearance query, or null for anything the catalog rejects. */
+export function canonicalAppearanceQuery(params: URLSearchParams): string | null {
+  const parsed = parseAppearanceParams(params);
+  if (parsed.kind !== 'ok') return null;
+  const tweaks = tweakQuery(parsed.appearance);
+  return `theme=${parsed.appearance.themeId}${tweaks ? `&${tweaks}` : ''}`;
+}
+
+export function statusStatePayload(nowSeconds: number, next?: StatusNextPage, query?: string | null): StatusStatePayload {
   return {
     v: 1,
     k: STATE_KIND,
     nonce: crypto.randomUUID(),
     exp: nowSeconds + STATUS_STATE_TTL_SECONDS,
     ...(next === undefined ? {} : { next }),
+    ...(next !== undefined && query ? { q: query } : {}),
   };
 }
 
@@ -145,6 +167,7 @@ export async function verifyStatusState(
     payload.v === 1 &&
     typeof payload.nonce === 'string' &&
     (payload.next === undefined || isStatusNextPage(payload.next)) &&
+    (payload.q === undefined || (typeof payload.q === 'string' && payload.q.length <= 2048)) &&
     !payloadExpired(payload.exp, nowSeconds));
 }
 
@@ -221,7 +244,19 @@ export type SyncOutcome =
       posts: SummaryCounts | null;
       finishedAtMs: number | null;
       runUrl: string | null;
+      /** Rows the summary names: the rows a guarded bulk delete would
+       * remove, or the rows that failed. Absent in older summaries. */
+      items?: readonly SummaryItem[];
     };
+
+/** One Notion row named by the run summary's optional `affected` list. */
+export interface SummaryItem {
+  section: 'pages' | 'posts' | null;
+  title: string;
+  reason: string | null;
+}
+
+export const SUMMARY_ITEMS_MAX = 20;
 
 export interface SummaryCounts {
   created: number;
@@ -252,6 +287,10 @@ export type SiteDiscovery =
       syncRun: NotionSyncRunIdentity | null;
       summary: SafeSummaryParse | null;
       build: GithubPagesBuildIdentity | null;
+      /** Best-effort reads: null (or absent) when GitHub did not say. */
+      notionConnected?: boolean | null;
+      themeName?: string | null;
+      automaticUpdatesResumed?: boolean;
     }
   | {
       ok: false;
@@ -268,6 +307,15 @@ export interface SiteStatus {
   /** True while a sync run is freshly in flight; the session page then offers
    * a manual refresh instead of reloading itself. */
   runInFlight: boolean;
+  /** The owner's Notion page links, from this browser's setup cookie. */
+  notion?: NotionPageLinks | null;
+  /** Whether the repository holds a Notion token; null when unknown. */
+  notionConnected?: boolean | null;
+  /** Catalog name of the theme in `_config.yml`; null when unknown. */
+  themeName?: string | null;
+  /** GitHub had switched the scheduled sync off after 60 quiet days and this
+   * page load switched it back on. */
+  automaticUpdatesResumed?: boolean;
 }
 
 /** The discriminated union of every page state a signed-in visitor can reach.
@@ -308,6 +356,7 @@ export type SafeSummaryParse =
       pages: SummaryCounts | null;
       posts: SummaryCounts | null;
       finishedAtMs: number | null;
+      items?: readonly SummaryItem[];
     }
   | { ok: false; reason: 'malformed' | 'unsupported_version' };
 
@@ -325,6 +374,36 @@ function summaryCounts(value: unknown): SummaryCounts | null | undefined {
     unchanged: record.unchanged as number,
     errors: record.errors as number,
   };
+}
+
+/** The dashboard's own sentence for each notiongit-sync `reason_code`; an
+ * unknown code falls back to the summary's `reason`. */
+const REASON_COPY: Readonly<Record<string, string>> = {
+  duplicate_web_address: 'Another post already uses the same web address. Open one of them in Notion and change its Web address, for example by adding -2.',
+  read_failed: 'Notion did not hand it over this time. It will be tried again at the next update.',
+  unexpected: 'Something in it could not be converted. Try undoing your most recent change to it.',
+};
+
+/** The optional `affected` list: kept only while every entry is well formed,
+ * dropped (never fatal) otherwise, since the counts still tell the story. */
+function summaryItems(value: unknown): SummaryItem[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const items: SummaryItem[] = [];
+  for (const entry of value.slice(0, SUMMARY_ITEMS_MAX)) {
+    if (entry === null || typeof entry !== 'object') return undefined;
+    const record = entry as Record<string, unknown>;
+    if (typeof record.title !== 'string') return undefined;
+    const title = record.title.trim().slice(0, 200);
+    if (!title) continue;
+    items.push({
+      section: record.section === 'pages' || record.section === 'posts' ? record.section : null,
+      title,
+      reason: typeof record.reason_code === 'string' && Object.hasOwn(REASON_COPY, record.reason_code)
+        ? REASON_COPY[record.reason_code]!
+        : typeof record.reason === 'string' && record.reason.trim() ? record.reason.trim().slice(0, 300) : null,
+    });
+  }
+  return items;
 }
 
 export function parseSafeSummary(text: string): SafeSummaryParse {
@@ -354,6 +433,7 @@ export function parseSafeSummary(text: string): SafeSummaryParse {
     pages,
     posts,
     finishedAtMs: typeof record.finished_at === 'string' ? epochMs(record.finished_at) : null,
+    ...(summaryItems(record.affected) ? { items: summaryItems(record.affected) } : {}),
   };
 }
 
@@ -383,6 +463,7 @@ function syncOutcomeOf(run: NotionSyncRunIdentity, summary: SafeSummaryParse | n
     posts: summary.posts,
     finishedAtMs: summary.finishedAtMs ?? run.updatedAtMs ?? run.createdAtMs,
     runUrl: run.htmlUrl || null,
+    ...(summary.items ? { items: summary.items } : {}),
   } as const;
   if (summary.result === 'success') return { kind: 'succeeded', ...outcome };
   if (summary.result === 'no_op') return { kind: 'no_op', ...outcome };
@@ -412,7 +493,12 @@ function siteUrl(login: string, repositoryName: string, fallback: string): strin
  * in-flight run: past `STATUS_RUN_STUCK_SECONDS` the meta-refresh hint is
  * dropped so an open tab stops polling, while the panel keeps saying the run
  * is in flight — only GitHub can prove otherwise. */
-export function projectSiteStatus(discovery: SiteDiscovery, session: StatusSession, nowMs: number): StatusView {
+export function projectSiteStatus(
+  discovery: SiteDiscovery,
+  session: StatusSession,
+  nowMs: number,
+  notion: NotionPageLinks | null = null,
+): StatusView {
   const viewerLogin = discovery.ok ? discovery.accountLogin : session.login;
   if (!discovery.ok) {
     if (discovery.reason === 'unavailable') {
@@ -432,6 +518,10 @@ export function projectSiteStatus(discovery: SiteDiscovery, session: StatusSessi
       deploy: deployOutcomeOf(discovery.build),
       runInFlight: syncRunning && !runStuck,
       ...(discovery.summary !== null && !discovery.summary.ok ? { summaryFallback: discovery.summary.reason } : {}),
+      notion,
+      notionConnected: discovery.notionConnected ?? null,
+      themeName: discovery.themeName ?? null,
+      automaticUpdatesResumed: discovery.automaticUpdatesResumed === true,
     },
   };
 }
@@ -473,19 +563,28 @@ export async function discoverSite(
   if (!found.ok) return found;
   const { accountLogin, repository, installationToken } = found;
 
+  // The newest run from any trigger: a scheduled run that failed must not
+  // hide behind an older green hand-triggered one.
+  const token = installationToken.raw;
+  const extras = Promise.all([
+    hasNotionTokenSecret(token, repository.fullName, fetcher),
+    themeNameOf(token, repository.fullName, fetcher),
+    resumeAutomaticUpdates(token, repository.fullName, fetcher),
+  ]);
   let syncRun: NotionSyncRunIdentity | null;
   let build: GithubPagesBuildIdentity | null;
   try {
     [syncRun, build] = await Promise.all([
-      latestDispatchedSyncRun(installationToken.raw, repository.fullName, fetcher),
-      latestPagesBuild(installationToken.raw, repository.fullName, fetcher),
+      latestSyncRun(token, repository.fullName, fetcher),
+      latestPagesBuild(token, repository.fullName, fetcher),
     ]);
   } catch (error) {
     return discoveryFailure(error);
   }
   const summaryText = syncRun === null || syncRun.status !== 'completed'
     ? null
-    : await latestSyncRunSummary(installationToken.raw, repository.fullName, syncRun.runId, fetcher);
+    : await latestSyncRunSummary(token, repository.fullName, syncRun.runId, fetcher);
+  const [notionConnected, themeName, automaticUpdatesResumed] = await extras;
   return {
     ok: true,
     accountLogin,
@@ -493,7 +592,27 @@ export async function discoverSite(
     syncRun,
     summary: summaryText === null ? null : parseSafeSummary(summaryText),
     build,
+    notionConnected,
+    themeName,
+    automaticUpdatesResumed,
   };
+}
+
+async function themeNameOf(token: string, fullName: string, fetcher: typeof fetch): Promise<string | null> {
+  try {
+    const themeId = readAppearanceBlock(await readRepositoryConfig(token, fullName, fetcher))?.themeId;
+    return themeId ? findTheme(themeId.toLowerCase())?.name ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
+/** GitHub switches scheduled workflows off after 60 days without repository
+ * activity, which silently stops the Notion sync; turning it back on needs
+ * the Actions write permission the App already holds. */
+async function resumeAutomaticUpdates(token: string, fullName: string, fetcher: typeof fetch): Promise<boolean> {
+  if (await syncWorkflowState(token, fullName, fetcher) !== 'disabled_inactivity') return false;
+  return enableSyncWorkflow(token, fullName, fetcher);
 }
 
 export type SiteRepositoryDiscovery =
@@ -654,11 +773,8 @@ export async function admitStatusRerun(
 }
 
 function statusHtml(document: string, status = 200, cookies: string[] = [], retryAfterSeconds: number | null = null): Response {
-  const headers = new Headers({
-    'content-type': 'text/html; charset=utf-8',
-    'cache-control': 'no-store',
-    'referrer-policy': 'no-referrer',
-  });
+  // same-origin: the page's forms then carry a real Origin (see isSameOriginPost).
+  const headers = pageHeaders({ frames: false, scripts: false, referrer: 'same-origin' });
   if (retryAfterSeconds !== null) headers.set('retry-after', String(retryAfterSeconds));
   for (const cookie of cookies) headers.append('Set-Cookie', cookie);
   return new Response(document, { status, headers });
@@ -687,9 +803,46 @@ function sessionCookie(token: string): string {
   return `${STATUS_SESSION_COOKIE}=${encodeURIComponent(token)}; Max-Age=${STATUS_SESSION_TTL_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Lax`;
 }
 
+const NOTICE_KEYS = ['signin_required', 'sync_triggered', 'already_running', 'rebuild_triggered', 'delete_confirmed'] as const;
+
 function noticeOf(url: URL): StatusPageChrome['notice'] {
   const notice = url.searchParams.get('notice');
-  return notice === 'signin_required' || notice === 'sync_triggered' || notice === 'already_running' ? notice : null;
+  return (NOTICE_KEYS as readonly string[]).includes(notice ?? '') ? notice as StatusPageChrome['notice'] : null;
+}
+
+/**
+ * The owner's Notion page links, kept in this browser only. The setup
+ * success page sets the cookie; the status page reads it back, because
+ * InkDrafts keeps no server-side record tying an account to its Notion
+ * pages. Signed so a cookie written for one site never renders on another,
+ * and every URL is re-checked to point at Notion on the way out.
+ */
+export const NOTION_LINKS_COOKIE = '__Host-inkdrafts-notion';
+const NOTION_LINKS_KIND = 'notion-links';
+export const NOTION_LINKS_TTL_SECONDS = 400 * 24 * 60 * 60;
+
+export async function notionLinksCookie(repositoryFullName: string, links: NotionPageLinks, secret: string): Promise<string | null> {
+  const clean = {
+    h: isNotionUrl(links.homeUrl) ? links.homeUrl : null,
+    p: isNotionUrl(links.postsUrl) ? links.postsUrl : null,
+    g: isNotionUrl(links.pagesUrl) ? links.pagesUrl : null,
+  };
+  if (!clean.h && !clean.p && !clean.g) return null;
+  const token = await signSignedPayload({ v: 1, k: NOTION_LINKS_KIND, r: repositoryFullName.toLowerCase(), ...clean }, secret);
+  return `${NOTION_LINKS_COOKIE}=${encodeURIComponent(token)}; Max-Age=${NOTION_LINKS_TTL_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+}
+
+export async function readNotionLinks(request: Request, repositoryFullName: string, secret: string): Promise<NotionPageLinks | null> {
+  const encoded = cookieValue(request, NOTION_LINKS_COOKIE);
+  if (encoded === null) return null;
+  const payload = await verifySignedPayload<{ r: string; h: unknown; p: unknown; g: unknown }>(encoded, secret, (candidate) =>
+    candidate.k === NOTION_LINKS_KIND && candidate.v === 1 && candidate.r === repositoryFullName.toLowerCase());
+  if (payload === null) return null;
+  return {
+    homeUrl: isNotionUrl(payload.h) ? payload.h : null,
+    postsUrl: isNotionUrl(payload.p) ? payload.p : null,
+    pagesUrl: isNotionUrl(payload.g) ? payload.g : null,
+  };
 }
 
 function refusedResponse(code: ProvisioningFailureCode, status: number, retryAfterSeconds: number | null): Response {
@@ -716,7 +869,9 @@ export async function statusHome(request: Request, env: Partial<StatusEnv>): Pro
   // remediation copy points at.
   if (url.searchParams.get('connect') === '1') {
     const next = url.searchParams.get('next');
-    const payload = statusStatePayload(Math.floor(Date.now() / 1000), isStatusNextPage(next) ? next : undefined);
+    const back = url.searchParams.get('back');
+    const query = back === null || back.length > 2048 ? null : canonicalAppearanceQuery(new URLSearchParams(back));
+    const payload = statusStatePayload(Math.floor(Date.now() / 1000), isStatusNextPage(next) ? next : undefined, query);
     const authorizeUrl = new URL('https://github.com/login/oauth/authorize');
     authorizeUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
     authorizeUrl.searchParams.set('redirect_uri', new URL('/auth/github/callback', request.url).toString());
@@ -730,7 +885,10 @@ export async function statusHome(request: Request, env: Partial<StatusEnv>): Pro
   }
 
   const discovery = await discoverSite({ GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY }, session);
-  const view = projectSiteStatus(discovery, session, Date.now());
+  const notion = discovery.ok
+    ? await readNotionLinks(request, discovery.repository.fullName, GITHUB_CLIENT_SECRET)
+    : null;
+  const view = projectSiteStatus(discovery, session, Date.now(), notion);
   return statusHtml(statusPage(view, {
     notice: noticeOf(url),
     rerunFormToken: await signRerunToken(session, GITHUB_CLIENT_SECRET),
@@ -786,7 +944,9 @@ export async function statusCallback(request: Request, env: Partial<StatusEnv>):
       installationId,
       exp: Math.floor(Date.now() / 1000) + STATUS_SESSION_TTL_SECONDS,
     };
-    const landing = payload.next === undefined ? '/status' : STATUS_NEXT_PAGES[payload.next];
+    const landing = payload.next === undefined
+      ? '/status'
+      : `${STATUS_NEXT_PAGES[payload.next]}${payload.q ? `?${payload.q}` : ''}`;
     return redirectResponse(303, new URL(landing, request.url).toString(), [
       sessionCookie(await signStatusSession(session, GITHUB_CLIENT_SECRET)),
       CLEAR_STATE_COOKIE,
@@ -810,10 +970,15 @@ export async function statusCallback(request: Request, env: Partial<StatusEnv>):
  * after the budget check so an infrastructure refusal never spends one of
  * the account's own daily slots.
  */
+export type StatusRerunAction = 'sync' | 'sync_allow_delete' | 'rebuild';
+
+function rerunActionOf(value: unknown): StatusRerunAction | null {
+  if (value === null || value === undefined || value === 'sync') return 'sync';
+  return value === 'sync_allow_delete' || value === 'rebuild' ? value : null;
+}
+
 export async function statusRerun(request: Request, env: Partial<StatusEnv>): Promise<Response> {
-  const url = new URL(request.url);
-  const origin = request.headers.get('Origin');
-  if (origin !== null && origin !== url.origin) {
+  if (!isSameOriginPost(request)) {
     return statusHtml(statusPage({ kind: 'auth_failed', reason: 'state_invalid' }, { notice: null, rerunFormToken: null }), 403);
   }
 
@@ -829,8 +994,10 @@ export async function statusRerun(request: Request, env: Partial<StatusEnv>): Pr
 
   const form = await request.formData().catch(() => null);
   const token = form?.get('token');
+  const action = rerunActionOf(form?.get('action'));
   if (
     typeof token !== 'string' ||
+    action === null ||
     !(await rerunTokenValid(token, session, GITHUB_CLIENT_SECRET, Math.floor(Date.now() / 1000)))
   ) {
     return statusHtml(statusPage({ kind: 'auth_failed', reason: 'state_invalid' }, { notice: null, rerunFormToken: null }), 403);
@@ -862,23 +1029,20 @@ export async function statusRerun(request: Request, env: Partial<StatusEnv>): Pr
     return statusHtml(statusPage(projectSiteStatus(discovery, session, Date.now()), { notice: null, rerunFormToken: null }));
   }
   const repository = discovery.repository;
-
-  // The convergence check: a live dispatch run means this click would only
-  // duplicate it. The read is unfiltered so a scheduled run mid-flight also
-  // converges, and a run stuck non-completed past STATUS_RUN_STUCK_SECONDS
-  // stops gating — the owner can force a fresh dispatch.
-  if (discovery.syncRun !== null && runIsFreshlyInFlight(discovery.syncRun, Date.now())) {
-    return redirectResponse(303, new URL('/status?notice=already_running', request.url).toString());
+  // Removing rows is honored only while the latest run is the guard that
+  // asked for it; a stale form cannot delete anything a later run kept.
+  const allowBulkDelete = action === 'sync_allow_delete' &&
+    discovery.summary !== null && discovery.summary.ok && discovery.summary.code === 'bulk_delete_guard';
+  if (action === 'sync_allow_delete' && !allowBulkDelete) {
+    return redirectResponse(303, new URL('/status', request.url).toString());
   }
-  try {
-    const installationToken = await createGithubInstallationToken({ GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY }, session.installationId);
-    const anyLiveRun = await latestSyncRun(installationToken.raw, repository.fullName);
-    if (anyLiveRun !== null && runIsFreshlyInFlight(anyLiveRun, Date.now())) {
-      return redirectResponse(303, new URL('/status?notice=already_running', request.url).toString());
-    }
-  } catch {
-    // The convergence read is best-effort; the dispatch path below classifies
-    // its own failures.
+
+  // The convergence check: discovery read the newest run from any trigger,
+  // so a scheduled run mid-flight converges too, and a run stuck
+  // non-completed past STATUS_RUN_STUCK_SECONDS stops gating — the owner can
+  // force a fresh dispatch.
+  if (action !== 'rebuild' && discovery.syncRun !== null && runIsFreshlyInFlight(discovery.syncRun, Date.now())) {
+    return redirectResponse(303, new URL('/status?notice=already_running', request.url).toString());
   }
 
   const budget = await consumeGlobalMutationBudget(JOBS, provisioningThrottleConfig(env), Date.now(), Math.random);
@@ -915,9 +1079,16 @@ export async function statusRerun(request: Request, env: Partial<StatusEnv>): Pr
 
   try {
     const installationToken = await createGithubInstallationToken({ GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY }, session.installationId);
-    await dispatchNotionSyncWorkflow(installationToken.raw, repository.fullName);
+    if (action === 'rebuild') {
+      await requestPagesBuild(installationToken.raw, repository.fullName);
+      return redirectResponse(303, new URL('/status?notice=rebuild_triggered', request.url).toString());
+    }
+    await dispatchNotionSyncWorkflow(installationToken.raw, repository.fullName, fetch, { allowBulkDelete });
   } catch (error) {
     if (error instanceof GithubSyncError) {
+      return refusedResponse(error.code, error.status, error.retryAfterSeconds);
+    }
+    if (error instanceof GithubPagesError) {
       return refusedResponse(error.code, error.status, error.retryAfterSeconds);
     }
     if (error instanceof GithubAppAuthError) {
@@ -927,7 +1098,72 @@ export async function statusRerun(request: Request, env: Partial<StatusEnv>): Pr
   }
 
   emitProvisioningEvent({ type: 'status_rerun_dispatched', requestLabel, ts: Date.now() });
-  return redirectResponse(303, new URL('/status?notice=sync_triggered', request.url).toString());
+  return redirectResponse(303, new URL(`/status?notice=${allowBulkDelete ? 'delete_confirmed' : 'sync_triggered'}`, request.url).toString());
+}
+
+/**
+ * `POST /status/notion`: connect Notion to a site that has none, or
+ * reconnect one that lost access. It opens a fresh provisioning job for the
+ * site's existing repository and hands the owner to that job's progress
+ * page, so the Notion consent, the secret write and the first update all run
+ * through the signup pipeline, which already tolerates an existing
+ * repository. A site that already holds a Notion token gets `reconnect`
+ * mode: the owner shares the page they write in instead of taking a fresh
+ * copy of the template, which would replace their content with samples.
+ */
+export async function statusConnectNotion(request: Request, env: Partial<StatusEnv>): Promise<Response> {
+  if (!isSameOriginPost(request)) {
+    return statusHtml(statusPage({ kind: 'auth_failed', reason: 'state_invalid' }, { notice: null, rerunFormToken: null }), 403);
+  }
+  const { JOBS, GITHUB_CLIENT_SECRET, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY } = env;
+  if (!JOBS || !GITHUB_CLIENT_SECRET || !GITHUB_APP_ID || !GITHUB_APP_PRIVATE_KEY) return configMissingResponse();
+
+  const session = await readStatusSession(request, GITHUB_CLIENT_SECRET);
+  if (!session) return redirectResponse(303, new URL('/status?notice=signin_required', request.url).toString());
+  const form = await request.formData().catch(() => null);
+  const token = form?.get('token');
+  if (typeof token !== 'string' || !(await rerunTokenValid(token, session, GITHUB_CLIENT_SECRET, Math.floor(Date.now() / 1000)))) {
+    return statusHtml(statusPage({ kind: 'auth_failed', reason: 'state_invalid' }, { notice: null, rerunFormToken: null }), 403);
+  }
+
+  const jobId = crypto.randomUUID();
+  const burst = await admitProvisioningRequest(env as StatusEnv, provisioningAdmissionConfig(env), {
+    request,
+    jobId,
+    hmacSecret: GITHUB_CLIENT_SECRET,
+  }, Date.now());
+  if (burst.action !== 'allow') return statusThrottleRefusal(burst.reason, burst.retryAfterSeconds);
+
+  const found = await discoverSiteRepository({ GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY }, session);
+  if (!found.ok) {
+    return statusHtml(statusPage(projectSiteStatus(found, session, Date.now()), { notice: null, rerunFormToken: null }));
+  }
+  let destination;
+  try {
+    destination = repositoryDestination(found.accountLogin, found.repository.name);
+  } catch {
+    return refusedResponse('github_identity_missing', 400, null);
+  }
+  const reconnect = await hasNotionTokenSecret(found.installationToken.raw, found.repository.fullName) === true;
+
+  const start = await acquireProvisioningStart(JOBS, { accountId: session.accountId, jobId }, provisioningThrottleConfig(env), Date.now());
+  if (!start.granted) {
+    if (start.reason === 'account_busy' && start.activeJobId !== null) {
+      return redirectResponse(303, new URL(progressPageUrl(start.activeJobId), request.url).toString());
+    }
+    return refusedResponse('github_rate_limited', 429, start.retryAfterSeconds);
+  }
+  await saveProvisioningJob(JOBS, createProvisioningJob({
+    jobId,
+    installationId: session.installationId,
+    identity: { id: session.accountId, login: found.accountLogin, accountType: 'User' },
+    repository: destination,
+    generatedRepository: found.repository,
+    appearance: null,
+    ...(reconnect ? { notionMode: 'reconnect' as const } : {}),
+    now: Date.now(),
+  }));
+  return redirectResponse(303, new URL(progressPageUrl(jobId), request.url).toString());
 }
 
 /** Throttle refusals on this surface are about syncing, not about setup, so

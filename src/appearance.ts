@@ -16,7 +16,7 @@
 
 import { appearancePage, type AppearanceError, type AppearancePageModel, type AppearanceSite } from './appearance-page';
 import { GithubConfigError, listRepositoryThemes, patchAppearanceBlock, patchSiteConfig, readRepositoryConfig } from './repository-config';
-import { pageHeaders } from './http-headers';
+import { isSameOriginPost, pageHeaders } from './http-headers';
 import {
   admitProvisioningRequest,
   admitProvisioningStage,
@@ -28,6 +28,7 @@ import {
 import { repositoryDestination } from './repository-naming';
 import { payloadExpired, signSignedPayload, verifySignedPayload } from './signed-payload';
 import {
+  canonicalAppearanceQuery,
   discoverSiteRepository,
   projectSiteStatus,
   readStatusSession,
@@ -122,7 +123,8 @@ export async function admitAppearanceSave(kv: KVNamespace, accountId: number, no
 }
 
 function html(document: string, status = 200, retryAfterSeconds: number | null = null): Response {
-  const headers = pageHeaders({ frames: true, scripts: true });
+  // same-origin: the Save form then carries a real Origin (see isSameOriginPost).
+  const headers = pageHeaders({ frames: true, scripts: true, referrer: 'same-origin' });
   if (retryAfterSeconds !== null) headers.set('retry-after', String(retryAfterSeconds));
   return new Response(document, { status, headers });
 }
@@ -294,18 +296,25 @@ export async function appearanceHome(request: Request, env: Partial<StatusEnv>):
 
 /** `POST /status/appearance`: theme, t_* and c_* fields plus the form token. */
 export async function appearanceSave(request: Request, env: Partial<StatusEnv>): Promise<Response> {
-  const url = new URL(request.url);
-  const origin = request.headers.get('Origin');
-  if (origin !== null && origin !== url.origin) {
+  if (!isSameOriginPost(request)) {
     return html(statusPage({ kind: 'auth_failed', reason: 'state_invalid' }, { notice: null, rerunFormToken: null }), 403);
   }
   const { JOBS, GITHUB_CLIENT_SECRET, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY } = env;
   if (!JOBS || !GITHUB_CLIENT_SECRET || !GITHUB_APP_ID || !GITHUB_APP_PRIVATE_KEY) return configMissing();
 
-  const session = await readStatusSession(request, GITHUB_CLIENT_SECRET);
-  if (!session) return redirect(new URL('/status?notice=signin_required', request.url).toString());
-
   const form = await request.formData().catch(() => null);
+  const session = await readStatusSession(request, GITHUB_CLIENT_SECRET);
+  if (!session) {
+    // The session ran out while the owner was choosing: sign in again and
+    // come back to the same choice (carried in the signed sign-in state).
+    const chosen = new URLSearchParams();
+    for (const [name, value] of form ?? []) if (name !== 'token' && typeof value === 'string') chosen.append(name, value);
+    const back = canonicalAppearanceQuery(chosen);
+    const next = new URL('/status?connect=1&next=appearance', request.url);
+    if (back) next.searchParams.set('back', back);
+    return redirect(next.toString());
+  }
+
   const token = form?.get('token');
   if (
     !form ||

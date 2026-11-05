@@ -308,11 +308,53 @@ export async function latestSyncRun(
   return run ? runIdentity(run) : null;
 }
 
-/** Trigger the template's documented sync workflow with safe default bulk-delete behavior. */
+/** GitHub's own label for a workflow it switched off; the scheduled sync
+ * stops after 60 days without repository activity. */
+export type SyncWorkflowState = 'active' | 'disabled_inactivity' | 'disabled_manually' | 'other';
+
+/** Null when the read fails: the caller treats an unknown state as active. */
+export async function syncWorkflowState(
+  installationToken: string,
+  repositoryFullName: string,
+  fetcher: typeof fetch = fetch,
+): Promise<SyncWorkflowState | null> {
+  try {
+    const response = await fetcher(`${GITHUB_API}${runsPath(repositoryFullName)}`, {
+      headers: githubHeaders(installationToken),
+    });
+    if (!response.ok) return null;
+    const state = (await readJson<{ state?: unknown }>(response))?.state;
+    if (state === 'active' || state === 'disabled_inactivity' || state === 'disabled_manually') return state;
+    return typeof state === 'string' ? 'other' : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Turn the sync workflow back on; true only when GitHub confirmed it. */
+export async function enableSyncWorkflow(
+  installationToken: string,
+  repositoryFullName: string,
+  fetcher: typeof fetch = fetch,
+): Promise<boolean> {
+  try {
+    const response = await fetcher(`${GITHUB_API}${runsPath(repositoryFullName)}/enable`, {
+      method: 'PUT',
+      headers: githubHeaders(installationToken),
+    });
+    return response.status === 204;
+  } catch {
+    return false;
+  }
+}
+
+/** Trigger the template's documented sync workflow. Bulk deletes stay
+ * guarded unless the owner confirmed them on the status page. */
 export async function dispatchNotionSyncWorkflow(
   installationToken: string,
   repositoryFullName: string,
   fetcher: typeof fetch = fetch,
+  options: { allowBulkDelete?: boolean } = {},
 ): Promise<void> {
   const response = await fetcher(`${GITHUB_API}${runsPath(repositoryFullName)}/dispatches`, {
     method: 'POST',
@@ -321,7 +363,7 @@ export async function dispatchNotionSyncWorkflow(
       headers.set('Content-Type', 'application/json');
       return headers;
     })(),
-    body: JSON.stringify({ ref: 'main', inputs: { allow_bulk_delete: 'false' } }),
+    body: JSON.stringify({ ref: 'main', inputs: { allow_bulk_delete: options.allowBulkDelete === true ? 'true' : 'false' } }),
   });
 
   if (response.status === 204) return;

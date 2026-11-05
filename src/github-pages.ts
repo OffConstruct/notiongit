@@ -299,3 +299,20 @@ export async function configureGithubPages(
 
   throw new GithubPagesError('github_pages_unavailable', 502);
 }
+
+/** Ask GitHub to rebuild the site from the current main branch (the status
+ * page's "Try again" after a failed publish). Throws the same coded errors
+ * as configuration so the caller can map them to copy. */
+export async function requestPagesBuild(
+  installationToken: string,
+  repositoryFullName: string,
+  fetcher: typeof fetch = fetch,
+): Promise<void> {
+  const response = await fetcher(`${GITHUB_API}${pagesPath(repositoryFullName)}/builds`, {
+    method: 'POST',
+    headers: githubHeaders(installationToken),
+  });
+  if (response.status === 201 || response.status === 200) return;
+  if (response.status === 429) throw new GithubPagesError('github_pages_rate_limited', 429, retryAfterSeconds(response));
+  throw errorForResponse(response) ?? new GithubPagesError('github_pages_unavailable', 502);
+}

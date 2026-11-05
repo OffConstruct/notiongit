@@ -150,6 +150,10 @@ export interface ProvisioningJobData {
   appearance: SiteAppearance | null;
   /** Why `patch_config` wrote url/baseurl only; the job still succeeds. */
   appearanceSkipped: AppearanceSkipReason | null;
+  /** `reconnect`: started from the status page for a site that already has
+   * Notion content, so the owner shares their existing page instead of
+   * taking a fresh copy of the template. Absent on signup jobs. */
+  notionMode?: 'reconnect';
 }
 
 /** `theme_unavailable`: the repository has no manifest for the theme (an
@@ -220,6 +224,7 @@ export interface CreateProvisioningJobParams {
   repository: RepositoryDestination;
   generatedRepository: GeneratedRepositoryIdentity;
   appearance?: SiteAppearance | null;
+  notionMode?: 'reconnect';
   now: number;
 }
 
@@ -251,6 +256,7 @@ export function createProvisioningJob(params: CreateProvisioningJobParams): Prov
       notionSecretsWrittenAt: null,
       appearance: params.appearance ?? null,
       appearanceSkipped: null,
+      ...(params.notionMode ? { notionMode: params.notionMode } : {}),
     },
     lock: null,
     wait: null,
@@ -344,4 +350,17 @@ export function tryAcquireProvisioningLock(
     lock: { owner, acquiredAt: now, expiresAt: now + PROVISIONING_LOCK_TTL_MS },
     updatedAt: now,
   };
+}
+
+/**
+ * The owner's "Try again" on a stopped setup: every failed step goes back to
+ * pending with a fresh attempt budget and the job returns to the queue's
+ * hands. Succeeded steps stay done, so the retry resumes where it stopped.
+ */
+export function requeueFailedJob(job: ProvisioningJob, now: number): ProvisioningJob {
+  const steps = { ...job.steps };
+  for (const step of PROVISIONING_STEP_ORDER) {
+    if (steps[step].status !== 'succeeded') steps[step] = initialStepState(now);
+  }
+  return { ...job, status: 'queued', steps, lock: null, wait: null, completedAt: null, updatedAt: now };
 }

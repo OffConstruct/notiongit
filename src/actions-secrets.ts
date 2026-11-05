@@ -240,3 +240,28 @@ export const getActionsPublicKey = getGithubActionsPublicKey;
 export const sealActionsSecret = sealGithubActionsSecret;
 export const sealSecret = sealGithubActionsSecret;
 export const writeActionsSecrets = writeGithubActionsSecrets;
+
+/**
+ * Whether the repository already holds a Notion token secret: the status
+ * page's "has this site ever been connected to Notion" test. GitHub lists
+ * secret names only, never values. Null means the read failed and the caller
+ * cannot tell.
+ */
+export async function hasNotionTokenSecret(
+  installationToken: string,
+  repositoryFullName: string,
+  fetcher: typeof fetch = fetch,
+): Promise<boolean | null> {
+  try {
+    const response = await fetcher(
+      `${GITHUB_API}/repos/${repositoryPath(repositoryFullName)}/actions/secrets?per_page=100`,
+      { headers: githubHeaders(`Bearer ${installationToken}`) },
+    );
+    if (!response.ok) return null;
+    const body = await readJson<{ secrets?: { name?: unknown }[] }>(response);
+    if (!body || !Array.isArray(body.secrets)) return null;
+    return body.secrets.some((secret) => secret.name === 'NOTION_TOKEN');
+  } catch {
+    return null;
+  }
+}

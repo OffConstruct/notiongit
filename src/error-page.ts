@@ -4,117 +4,90 @@
  * A consent handoff is a browser navigation — a provider redirect or a
  * /connect entry link can only end in a document — so these paths render
  * this page rather than the JSON bodies a programmatic client would need.
- * Copy is canonical: the failure registry owns the message and action, and
- * the machine code stays visible because the layout must not hide error
- * detail. Mirrors the other routes: one self-contained document, design
- * tokens duplicated on purpose, no client JavaScript.
+ * The failure registry owns the copy: its message is the heading and its
+ * action the next step. Every page ends in at least one working button, and
+ * the machine code sits in "Details for support" rather than in the reader's
+ * way. No client JavaScript.
  */
 
 import { failureDescriptor, userCopy, type ProvisioningFailureCode } from './failures';
-import { SITE_PAGE_ACCENTS } from './site-styles';
+import { dashboardDocument, escapeHtml } from './dashboard-shell';
 
 export interface ErrorPageFailure {
   readonly code: ProvisioningFailureCode;
   readonly status: number;
   readonly retryAfterSeconds: number | null;
-  /** Where the start-again action sends the browser; null renders no button. */
+  /** Where the try-again action sends the browser; null renders Get help as
+   * the only button. */
   readonly restartHref: string | null;
-  /** Non-secret remediation metadata (already redacted by the caller); the
-   * page must not hide error detail just to simplify the layout. */
+  /** Non-secret remediation metadata (already redacted by the caller); shown
+   * under "Details for support". */
   readonly details?: Record<string, unknown> | null;
+  /** The setup this failure belongs to, when known: goes into the help report. */
+  readonly jobId?: string | null;
 }
 
-const STYLES = `
-  ${SITE_PAGE_ACCENTS}
-  * { box-sizing: border-box; }
-  html { color-scheme: light dark; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    line-height: 1.55;
-  }
-  a { color: var(--accent); }
-  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-  main { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
-  h1 {
-    font-size: clamp(1.6rem, 4vw, 2.25rem);
-    margin: 0 0 1rem;
-    letter-spacing: -0.02em;
-  }
-  .cta {
-    display: inline-block;
-    background: var(--accent);
-    color: var(--accent-fg);
-    font-weight: 600;
-    padding: 0.7rem 1.4rem;
-    border-radius: 8px;
-    text-decoration: none;
-    margin: 0.5rem 0;
-  }
-  .cta:hover { text-decoration: none; filter: brightness(1.08); }
-  .muted { color: var(--muted); }
-  code {
-    font-family: ui-monospace, monospace;
-    font-size: 0.9em;
-    overflow-wrap: anywhere;
-  }
-  ul.details {
-    margin: 0 0 1rem;
-    padding-left: 1.25rem;
-    color: var(--muted);
-    font-size: 0.9rem;
-  }
-  ul.details li { margin-bottom: 0.25rem; overflow-wrap: anywhere; }
-`;
+const ISSUES_URL = 'https://github.com/OffConstruct/notiongit/issues/new';
 
 function retryText(seconds: number): string {
-  if (seconds >= 2 * 60 * 60) return `about ${Math.round(seconds / 3600)} hours`;
-  if (seconds >= 2 * 60) return `about ${Math.round(seconds / 60)} minutes`;
+  if (seconds >= 2 * 60 * 60) return `in about ${Math.round(seconds / 3600)} hours`;
+  if (seconds >= 2 * 60) return `in about ${Math.round(seconds / 60)} minutes`;
   return `in ${seconds} seconds`;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+/** Button words follow the destination, so the label says what happens. */
+function restartLabel(href: string): string {
+  if (href.startsWith('/connect/notion')) return 'Try connecting Notion again';
+  if (href.startsWith('/progress')) return 'Back to your setup';
+  if (href.startsWith('/themes')) return 'Pick a design';
+  if (href.startsWith('/status')) return 'Go to your dashboard';
+  return 'Start again';
 }
 
-function detailsHtml(details: Record<string, unknown> | null | undefined): string {
+function detailsRows(details: Record<string, unknown> | null | undefined): string {
   if (!details) return '';
-  const rows = Object.entries(details)
+  return Object.entries(details)
     .map(([key, value]) => `<li><code>${escapeHtml(key)}</code>: ${escapeHtml(JSON.stringify(value) ?? '')}</li>`)
     .join('');
-  return rows === '' ? '' : `<ul class="details">${rows}</ul>`;
+}
+
+/** The issue is public, so it carries only the error code: the setup
+ * reference opens that setup's progress page and must stay private. */
+export function helpReportUrl(code: ProvisioningFailureCode): string {
+  const url = new URL(ISSUES_URL);
+  url.searchParams.set('title', `Setup problem: ${code}`);
+  url.searchParams.set('body', [
+    `Error code: ${code}`,
+    '',
+    'What were you doing when this happened?',
+    '',
+    '(This page is public. Do not paste passwords, tokens or private links.)',
+  ].join('\n'));
+  return url.toString();
 }
 
 export function errorPage(failure: ErrorPageFailure): string {
   const copy = userCopy(failure.code);
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>We could not complete this step</title>
-<style>${STYLES}</style>
-</head>
-<body>
-<main>
-<h1>We could not complete this step</h1>
-<p>${copy.message}</p>
-<p>${copy.action}</p>
-${detailsHtml(failure.details)}
-${failure.restartHref === null ? '' : `<a class="cta" href="${failure.restartHref}">Start again</a>`}
-${failure.retryAfterSeconds === null ? '' : `<p class="muted">You can try again ${retryText(failure.retryAfterSeconds)}.</p>`}
-<p class="muted">Error code: <code>${failure.code}</code></p>
-<p class="muted">Questions? See <a href="/support">Support</a> or the <a href="/privacy">Privacy Policy</a>.</p>
-</main>
-</body>
-</html>`;
+  const restart = failure.restartHref === null
+    ? ''
+    : `<a class="button primary" href="${escapeHtml(failure.restartHref)}">${restartLabel(failure.restartHref)}</a>`;
+  const help = `<a class="button${restart ? '' : ' primary'}" href="${escapeHtml(helpReportUrl(failure.code))}">Get help</a>`;
+  return dashboardDocument({
+    title: copy.message,
+    body: `<h1>${escapeHtml(copy.message)}</h1>
+<p class="lede">${escapeHtml(copy.action)}</p>
+${failure.retryAfterSeconds === null ? '' : `<p>You can try again ${retryText(failure.retryAfterSeconds)}.</p>`}
+<div class="actions">${restart}${help}</div>
+<p class="small muted">Get help opens a public page on GitHub with the error code filled in. Do not add passwords or private links. You can also read <a href="/support">Support</a>.</p>
+<details class="more">
+<summary>Details for support</summary>
+<ul class="plain">
+<li>Error code: <code>${escapeHtml(failure.code)}</code></li>
+${failure.jobId ? `<li>Setup reference: <code>${escapeHtml(failure.jobId)}</code></li>` : ''}
+${detailsRows(failure.details)}
+</ul>
+</details>`,
+  });
 }
 
 /** Renders the failure as the wire response for a browser navigation,
@@ -131,8 +104,23 @@ export function errorPageResponse(failure: ErrorPageFailure, headers: Record<str
   return new Response(errorPage(failure), { status: failure.status, headers: allHeaders });
 }
 
-/** The start-again target rule shared by callers: a flow restart only makes
- * sense when the registry says so. */
-export function restartHrefFor(code: ProvisioningFailureCode, href: string): string | null {
-  return failureDescriptor(code).recovery === 'restart_flow' ? href : null;
+/** The try-again target rule shared by callers: a flow restart goes to
+ * `href`; a Notion step the owner can redo goes back to that job's Notion
+ * consent (`notionRetryHref`), and everything else offers Get help only. */
+export function restartHrefFor(code: ProvisioningFailureCode, href: string, notionRetryHref: string | null = null): string | null {
+  const recovery = failureDescriptor(code).recovery;
+  if (recovery === 'restart_flow') return href;
+  if (notionRetryHref !== null && typeof recovery === 'object' && code.startsWith('notion_')) return notionRetryHref;
+  if (notionRetryHref !== null && code === 'provisioning_handoff_failed') return notionRetryHref;
+  return null;
+}
+
+/** The branded answer to a browser asking for a page that does not exist. */
+export function notFoundPage(): string {
+  return dashboardDocument({
+    title: 'Page not found',
+    body: `<h1>We could not find that page</h1>
+<p class="lede">The link may be old or mistyped.</p>
+<div class="actions"><a class="button primary" href="/">Go to the home page</a><a class="button" href="/status">Manage your site</a><a class="button" href="/themes">See the designs</a></div>`,
+  });
 }

@@ -248,7 +248,7 @@ describe('HTTP foundation', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/html');
-    expect(await response.text()).toContain('<title>InkDrafts</title>');
+    expect(await response.text()).toContain('<title>InkDrafts: your own website, written in Notion</title>');
   });
 
   test('reserves provider callback namespaces', async () => {
@@ -1017,6 +1017,8 @@ function postsProperties(): Record<string, unknown> {
 interface OnboardingFakeOptions {
   /** Duplicated root id to the two database ids it resolves to. */
   roots?: Record<string, { pages: string; posts: string }>;
+  /** What Notion's search returns: the pages the owner shared. */
+  sharedPages?: { id: string; parent: string }[];
   /** Replaces the response for one secret PUT, by 1-based write order. */
   onSecretPut?: (name: string, attempt: number) => Response | null;
 }
@@ -1064,6 +1066,12 @@ function onboardingFake(options: OnboardingFakeOptions = {}) {
         url: isPages ? PAGES_DB_URL : POSTS_DB_URL,
         title: [{ type: 'text', text: { content: 'A title the user may have renamed' } }],
         properties: isPages ? pagesProperties() : postsProperties(),
+      });
+    }
+    if (url.href === 'https://api.notion.com/v1/search' && request.method === 'POST') {
+      return Response.json({
+        object: 'list',
+        results: (options.sharedPages ?? []).map((page) => ({ object: 'page', id: page.id, parent: { type: page.parent } })),
       });
     }
     if (url.href === 'https://api.github.com/app/installations/123/access_tokens') {
@@ -1176,7 +1184,7 @@ describe('Notion authorization entry', () => {
 
     const missing = await route(new Request('https://example.com/connect/notion'), env);
     const page = await expectErrorPage(missing, 409, 'provisioning_job_missing');
-    expect(page).toContain('href="/connect/github"');
+    expect(page).toContain('href="/connect"');
 
     const unknown = await route(new Request('https://example.com/connect/notion?job_id=job-nope'), env);
     expect(unknown.status).toBe(409);
@@ -1276,7 +1284,44 @@ describe('Notion onboarding continuation', () => {
     expect(error).toBeInstanceOf(NotionOAuthError);
     expect((error as NotionOAuthError).code).toBe('notion_template_not_duplicated');
     expect((error as NotionOAuthError).status).toBe(400);
-    expect(fake.calls).toEqual([]);
+    // It looked for an InkDrafts page among the shared ones, found none, and
+    // wrote nothing.
+    expect(fake.calls).toEqual(['POST https://api.notion.com/v1/search']);
+    expect(queue.sent).toEqual([]);
+  });
+
+  test('a reconnect that shares the existing InkDrafts page instead of the template resolves it', async () => {
+    const kv = new MemoryKV();
+    const queue = new MemoryQueue<ProvisioningMessage>();
+    const env = await githubEnv(kv, queue);
+    await saveProvisioningJob(env.JOBS as unknown as KVNamespace, { ...awaitingNotionJob(), data: { ...awaitingNotionJob().data, notionMode: 'reconnect' } });
+    const fake = onboardingFake({ sharedPages: [{ id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', parent: 'page_id' }, { id: NOTION_ROOT, parent: 'workspace' }] });
+
+    await runContinuation(env, fake.fetcher, null);
+
+    // The top-level page is tried first, and it is the InkDrafts page.
+    expect(fake.calls[1]).toContain(`/v1/blocks/${NOTION_ROOT}`);
+    expect(await decryptSecretWrites(fake.secretWrites)).toEqual({
+      NOTION_TOKEN: NOTION_ACCESS_TOKEN,
+      NOTION_PAGES_DATABASE_ID: PAGES_DB,
+      NOTION_POSTS_DATABASE_ID: POSTS_DB,
+    });
+    expect(queue.sent).toEqual([{ jobId: JOB_ID }]);
+  });
+
+  test('a reconnect that picks the template again keeps the live site on its own page', async () => {
+    const kv = new MemoryKV();
+    const queue = new MemoryQueue<ProvisioningMessage>();
+    const env = await githubEnv(kv, queue);
+    await saveProvisioningJob(env.JOBS as unknown as KVNamespace, { ...awaitingNotionJob(), data: { ...awaitingNotionJob().data, notionMode: 'reconnect' } });
+    const fresh = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+    const fake = onboardingFake({ sharedPages: [{ id: fresh, parent: 'workspace' }] });
+
+    const error = await caught(runContinuation(env, fake.fetcher, fresh));
+
+    expect((error as NotionOAuthError).code).toBe('notion_reconnect_page_unshared');
+    expect(fake.calls).toEqual(['POST https://api.notion.com/v1/search']);
+    expect(fake.secretWrites).toEqual([]);
     expect(queue.sent).toEqual([]);
   });
 
@@ -1484,7 +1529,7 @@ describe('progress routes', () => {
     expect(response.headers.get('content-type')).toContain('text/html');
     expect(response.headers.get('cache-control')).toBe('no-store');
     const page = await response.text();
-    expect(page).toContain('<h1 id="progress-heading">Connect Notion to finish setup</h1>');
+    expect(page).toContain('<h1 id="progress-heading">Last step: connect Notion</h1>');
     expect(page).toContain('href="/connect/notion?job_id=job-123"');
     expect(page).not.toContain('installationId');
     expect(page).not.toContain('login');
@@ -1516,7 +1561,7 @@ describe('progress routes', () => {
 
     const page = await route(new Request('https://example.com/progress?job_id=not%20valid!'), env);
     expect(page.status).toBe(404);
-    expect(await page.text()).toContain('We could not find a site setup in progress for this link');
+    expect(await page.text()).toContain('This setup link has expired');
   });
 
   test('an unknown but well-formed job id is a missing snapshot and a 404 missing page', async () => {
@@ -1528,9 +1573,9 @@ describe('progress routes', () => {
       updatedAt: 0,
       progress: {
         status: 'missing',
-        message: 'We could not find a site setup in progress for this link.',
-        action: 'Start again from the beginning: connect GitHub first, then Notion.',
-        restartUrl: '/connect/github',
+        message: 'This setup link has expired.',
+        action: 'If your site is already set up, manage it from your dashboard. If not, start again from the beginning.',
+        restartUrl: '/connect',
       },
     });
 
@@ -1639,7 +1684,7 @@ describe('progress routes', () => {
       const plain = await route(new Request(`https://example.com/progress?job_id=${JOB_ID}`), env);
       expect(plain.status).toBe(200);
       expect(requested).toEqual([]);
-      expect(await plain.text()).toContain('<p id="site-check-result" class="muted" role="status" hidden></p>');
+      expect(await plain.text()).toContain('<p id="site-check-result" class="small muted" role="status" hidden></p>');
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -1659,10 +1704,146 @@ describe('progress routes', () => {
       }) as typeof fetch;
       const response = await route(new Request(`https://example.com/progress?job_id=${JOB_ID}&check=1`), env);
       expect(response.status).toBe(200);
-      expect(await response.text()).toContain('Connect Notion to finish setup');
+      expect(await response.text()).toContain('Last step: connect Notion');
       expect(probes).toBe(0);
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+describe('every dead end has a way forward', () => {
+  test('Try again on a stopped setup puts it back in the queue from where it stopped', async () => {
+    const kv = new MemoryKV();
+    const queue = new MemoryQueue<ProvisioningMessage>();
+    const env = await githubEnv(kv, queue);
+    const job = succeededJob();
+    job.status = 'dead_letter';
+    job.steps.await_deploy_build = { ...job.steps.await_deploy_build, status: 'failed', attempts: 5, lastError: { code: 'github_deploy_unavailable', retryable: true } };
+    job.steps.verify_deploy = { ...job.steps.verify_deploy, status: 'pending', attempts: 0, lastError: null };
+    await saveProvisioningJob(kv as unknown as KVNamespace, job);
+
+    const response = await route(new Request('https://example.com/progress/retry', {
+      method: 'POST',
+      headers: { Origin: 'null', 'Sec-Fetch-Site': 'same-origin' },
+      body: new URLSearchParams({ job_id: JOB_ID }),
+    }), env);
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(`https://example.com/progress?job_id=${JOB_ID}`);
+    expect(queue.sent).toEqual([{ jobId: JOB_ID }]);
+    const stored = await kv.get<ProvisioningJob>(`github:onboarding-job:${JOB_ID}`, 'json');
+    expect(stored?.status).toBe('queued');
+    expect(stored?.steps.verify_repository.status).toBe('succeeded');
+    expect(stored?.steps.await_deploy_build).toMatchObject({ status: 'pending', attempts: 0, lastError: null });
+
+    // A cross-site post and a job that is not stopped change nothing.
+    const crossSite = await route(new Request('https://example.com/progress/retry', {
+      method: 'POST',
+      headers: { Origin: 'https://evil.example' },
+      body: new URLSearchParams({ job_id: JOB_ID }),
+    }), env);
+    expect(crossSite.status).toBe(403);
+    const again = await route(new Request('https://example.com/progress/retry', {
+      method: 'POST',
+      body: new URLSearchParams({ job_id: JOB_ID }),
+    }), env);
+    expect(again.status).toBe(303);
+    expect(queue.sent).toHaveLength(1);
+  });
+
+  test('the success page leaves the owner\'s Notion links in this browser for the dashboard', async () => {
+    const kv = new MemoryKV();
+    const env = await githubEnv(kv);
+    const job = succeededJob();
+    job.data.notionLinks = { pagesUrl: PAGES_DB_URL, postsUrl: POSTS_DB_URL, templateRootUrl: ROOT_PAGE_URL };
+    await saveProvisioningJob(kv as unknown as KVNamespace, job);
+    const response = await route(new Request(`https://example.com/progress?job_id=${JOB_ID}`), env);
+    const cookie = response.headers.getSetCookie().find((value) => value.startsWith('__Host-inkdrafts-notion='));
+    expect(cookie).toBeDefined();
+    expect(cookie).toContain('HttpOnly; Secure; SameSite=Lax');
+    expect(cookie).not.toContain(PAGES_DB);
+  });
+
+  test('a browser asking for a page that does not exist gets a branded page; an API client keeps JSON', async () => {
+    const browser = await route(new Request('https://example.com/nope', { headers: { Accept: 'text/html,application/xhtml+xml' } }));
+    expect(browser.status).toBe(404);
+    const html = await browser.text();
+    expect(html).toContain('<h1>We could not find that page</h1>');
+    expect(html).toContain('<a class="button primary" href="/">Go to the home page</a>');
+    const api = await route(new Request('https://example.com/nope', { headers: { Accept: 'application/json' } }));
+    expect(api.status).toBe(404);
+    expect(await api.json()).toMatchObject({ error: 'not_found' });
+  });
+
+  test('trailing slashes and capitalized theme names redirect to the one canonical address', async () => {
+    for (const [from, to] of [
+      ['/status/', '/status'],
+      ['/privacy/', '/privacy'],
+      ['/themes/', '/themes'],
+      ['/themes/Verso', '/themes/verso'],
+      ['/progress/?job_id=a', '/progress?job_id=a'],
+    ] as const) {
+      const response = await route(new Request(`https://example.com${from}`));
+      expect(response.status).toBe(301);
+      expect(response.headers.get('location')).toBe(to);
+    }
+    expect((await route(new Request('https://example.com/preview/verso/'))).status).not.toBe(301);
+  });
+
+  test('a doubled slash never redirects off the site', async () => {
+    for (const from of ['//evil.example/', '//evil.example', '/\\evil.example/', '///evil.example//x/']) {
+      const response = await route(new Request(`https://inkdrafts.example${from}`));
+      const location = response.headers.get('location');
+      if (location === null) continue;
+      expect(location.startsWith('//')).toBe(false);
+      expect(new URL(location, 'https://inkdrafts.example/').host).toBe('inkdrafts.example');
+    }
+  });
+
+  test('the before-you-start page is routed and carries the chosen look to GitHub', async () => {
+    const response = await route(new Request('https://example.com/connect?theme=verso&t_mode=dark'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('<form class="go" method="get" action="/connect/github">');
+    expect(html).toContain('<input type="hidden" name="theme" value="verso">');
+    expect(html).toContain('<input type="hidden" name="t_mode" value="dark">');
+    expect((await route(new Request('https://example.com/connect'))).status).toBe(200);
+  });
+
+  test('page routes answer HEAD like GET', async () => {
+    for (const path of ['/', '/connect', '/themes', '/themes/verso', '/privacy']) {
+      const response = await route(new Request(`https://example.com${path}`, { method: 'HEAD' }));
+      expect(response.status).toBe(200);
+    }
+  });
+
+  test('declining on GitHub restarts the signup with the design the visitor picked', async () => {
+    const kv = new MemoryKV();
+    const env = await githubEnv(kv);
+    const start = await route(new Request('https://example.com/connect/github?theme=verso&t_mode=dark'), env);
+    const state = new URL(start.headers.get('location')!).searchParams.get('state')!;
+    const denied = await route(new Request(`https://example.com/auth/github/callback?error=access_denied&state=${encodeURIComponent(state)}`), env);
+    const html = await expectErrorPage(denied, 400, 'github_authorization_denied');
+    expect(html).toContain('<a class="button primary" href="/connect?theme=verso&amp;t_mode=dark">Start again</a>');
+  });
+
+  test('Notion failures after a verified state return to that setup, not to GitHub', async () => {
+    const kv = new MemoryKV();
+    const env = await githubEnv(kv);
+    await saveProvisioningJob(kv as unknown as KVNamespace, awaitingNotionJob());
+    const begin = await route(new Request(`https://example.com/connect/notion?job_id=${JOB_ID}`), env);
+    const state = new URL(begin.headers.get('location')!).searchParams.get('state')!;
+    const cookie = begin.headers.getSetCookie()[0]!.split(';')[0]!;
+    const denied = await route(new Request(`https://example.com/auth/notion/callback?error=access_denied&state=${encodeURIComponent(state)}`, {
+      headers: { Cookie: cookie },
+    }), env);
+    const html = await expectErrorPage(denied, 400, 'notion_authorization_denied');
+    expect(html).toContain(`<a class="button primary" href="/progress?job_id=${JOB_ID}">Back to your setup</a>`);
+    expect(html).toContain(`Setup reference: <code>${JOB_ID}</code>`);
+    expect(html).not.toContain('href="/connect/github"');
+
+    const unknown = await route(new Request('https://example.com/auth/notion/callback?state=garbage'), env);
+    const unknownHtml = await expectErrorPage(unknown, 400, 'notion_state_invalid');
+    expect(unknownHtml).toContain('<a class="button primary" href="/status">Go to your dashboard</a>');
   });
 });

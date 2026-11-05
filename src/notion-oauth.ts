@@ -247,18 +247,33 @@ function cookieValue(request: Request, name: string): string | null {
   return null;
 }
 
+/**
+ * Where a Notion failure's button goes. Before the state is verified the job
+ * is unknown, so the owner goes to their dashboard, which offers "Connect
+ * Notion" for a site that has none and leads back to a setup still in
+ * progress. Once the state names a job, a restart returns to that job's
+ * progress page and a Notion step the owner can redo goes straight back to
+ * its consent; neither starts the GitHub half over.
+ */
+function notionRestartHref(code: ProvisioningFailureCode, jobId: string | null): string | null {
+  if (jobId === null) return restartHrefFor(code, '/status');
+  return restartHrefFor(code, progressPageUrl(jobId), `/connect/notion?job_id=${encodeURIComponent(jobId)}`);
+}
+
 function notionFailureResponse(failure: {
   code: ProvisioningFailureCode;
   status: number;
   retryAfterSeconds: number | null;
   details?: Record<string, unknown> | null;
-  /** Overrides the registry-derived target; null means no button at all. */
+  jobId?: string | null;
+  /** Overrides the derived target; null means Get help is the only button. */
   restartHref?: string | null;
 }, extraHeaders: Record<string, string> = {}): Response {
-  const base = restartHrefFor(failure.code, '/connect/github');
+  const jobId = failure.jobId ?? null;
   return errorPageResponse({
     ...failure,
-    restartHref: failure.restartHref !== undefined ? failure.restartHref : base,
+    jobId,
+    restartHref: failure.restartHref !== undefined ? failure.restartHref : notionRestartHref(failure.code, jobId),
   }, extraHeaders);
 }
 
@@ -407,9 +422,11 @@ export async function finishNotionCallback(
   if (!record || record.version !== 1 || record.jobId !== payload.jobId || record.nonce !== payload.nonce) {
     return notionFailureResponse({ code: 'notion_state_invalid', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
   }
-  if (record.phase === 'consumed') return notionFailureResponse({ code: 'notion_state_replayed', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+  // From here the signed state and its KV record agree, so the job is known.
+  const jobId = payload.jobId;
+  if (record.phase === 'consumed') return notionFailureResponse({ code: 'notion_state_replayed', status: 400, retryAfterSeconds: null, jobId }, clearCookieHeaders);
   if (record.expiresAt <= Math.floor(Date.now() / 1000)) {
-    return notionFailureResponse({ code: 'notion_state_expired', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+    return notionFailureResponse({ code: 'notion_state_expired', status: 400, retryAfterSeconds: null, jobId }, clearCookieHeaders);
   }
 
   const admissionConfig = provisioningAdmissionConfig(env);
@@ -425,6 +442,7 @@ export async function finishNotionCallback(
       code: admissionFailureCode(control.reason),
       status,
       retryAfterSeconds: control.retryAfterSeconds,
+      jobId,
     }, clearCookieHeaders);
   }
   const replay = await admitProvisioningCallback(env as NotionOAuthEnv, admissionConfig, {
@@ -434,7 +452,7 @@ export async function finishNotionCallback(
     stage: 'notion_callback',
     jobId: payload.jobId,
   }, Date.now());
-  if (replay.action !== 'allow') return notionFailureResponse({ code: admissionFailureCode(replay.reason, 'notion'), status: 400, retryAfterSeconds: replay.retryAfterSeconds }, clearCookieHeaders);
+  if (replay.action !== 'allow') return notionFailureResponse({ code: admissionFailureCode(replay.reason, 'notion'), status: 400, retryAfterSeconds: replay.retryAfterSeconds, jobId }, clearCookieHeaders);
 
   // Claiming the callback above closes the replay race. Consume the signed
   // state before the provider call because the authorization code is single-use.
@@ -443,10 +461,10 @@ export async function finishNotionCallback(
   });
 
   if (url.searchParams.has('error')) {
-    return notionFailureResponse({ code: 'notion_authorization_denied', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+    return notionFailureResponse({ code: 'notion_authorization_denied', status: 400, retryAfterSeconds: null, jobId }, clearCookieHeaders);
   }
   const code = url.searchParams.get('code');
-  if (!code) return notionFailureResponse({ code: 'notion_code_missing', status: 400, retryAfterSeconds: null }, clearCookieHeaders);
+  if (!code) return notionFailureResponse({ code: 'notion_code_missing', status: 400, retryAfterSeconds: null, jobId }, clearCookieHeaders);
 
   try {
     const exchanged = await exchangeNotionCode(
@@ -505,14 +523,57 @@ export async function finishNotionCallback(
     // redacted on the way out so a future details field cannot smuggle a
     // credential into the browser.
     const details = failure.details ? redactValue(failure.details) as Record<string, unknown> : null;
-    const connectUrl = typeof details?.connect_url === 'string' ? details.connect_url : '/connect/github';
     if (codedFailureCode(error) === null) reportError('notion_callback_failed', error);
+    // A continuation can name its own restart (a vanished job restarts the
+    // whole signup); otherwise the job-aware default applies.
+    const connectUrl = typeof details?.connect_url === 'string' ? details.connect_url : null;
     return notionFailureResponse({
       code: failure.code,
       status: failure.status,
       retryAfterSeconds: failure.retryAfterSeconds,
       details,
-      restartHref: restartHrefFor(failure.code, connectUrl),
+      jobId,
+      ...(connectUrl === null ? {} : { restartHref: restartHrefFor(failure.code, connectUrl) }),
     }, clearCookieHeaders);
+  }
+}
+
+/**
+ * Pages this connection can read, top-level first: the candidates
+ * for the owner's InkDrafts page when Notion's consent shared existing pages
+ * instead of duplicating the template (a reconnect). Read-only, and only ids
+ * leave this function. Empty when the search fails.
+ */
+export async function sharedTopLevelPageIds(
+  accessToken: string,
+  fetcher: typeof fetch = fetch,
+  limit = 3,
+): Promise<string[]> {
+  try {
+    const response = await fetcher('https://api.notion.com/v1/search', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Notion-Version': NOTION_API_VERSION,
+      },
+      body: JSON.stringify({
+        filter: { property: 'object', value: 'page' },
+        sort: { direction: 'descending', timestamp: 'last_edited_time' },
+        page_size: 50,
+      }),
+    });
+    if (!response.ok) return [];
+    const body = await readJson<{ results?: { id?: unknown; parent?: { type?: unknown } }[] }>(response);
+    const pages = (body?.results ?? []).filter((page) => typeof page.id === 'string');
+    // A page shared on its own usually sits at the top of the workspace;
+    // its sub-pages come back too and are tried last.
+    const ranked = [
+      ...pages.filter((page) => page.parent?.type === 'workspace'),
+      ...pages.filter((page) => page.parent?.type !== 'workspace'),
+    ];
+    return ranked.map((page) => page.id as string).slice(0, limit);
+  } catch {
+    return [];
   }
 }
