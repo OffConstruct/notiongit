@@ -1,18 +1,21 @@
 // InkDrafts customizer: live preview for /themes/<id> and /status/appearance.
 // The pages work without it; this posts the tweak form's values to the
 // same-origin preview iframe (read by the template's preview.js), keeps the
-// address bar in step and hides the no-JS Preview button. Values are
-// validated with the worker's rules (src/theme-catalog.ts), so the preview
-// shows what a save would store.
+// address bar in step, hides the no-JS buttons, switches the design as soon
+// as the design <select> changes (the page reloads with the choice carried
+// over), and keeps the "Unsaved changes" cue in step with the form. Values
+// are validated with the worker's rules (src/theme-catalog.ts), so the
+// preview shows what a save would store.
 (function () {
   'use strict';
   var form = document.querySelector('form[data-customizer]');
-  var frame = document.getElementById('theme-preview');
+  var frame = function () { return document.getElementById('theme-preview'); };
   var dataNode = document.getElementById('customizer-data');
-  if (!form || !frame || !dataNode) return;
+  if (!form || !frame() || !dataNode) return;
   var data;
   try { data = JSON.parse(dataNode.textContent); } catch (e) { return; }
-  Array.prototype.forEach.call(form.querySelectorAll('[data-js-hidden]'), function (node) { node.hidden = true; });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-js-hidden], [data-theme-switch-submit]'), function (node) { node.hidden = true; });
+  var SWITCHED = 'inkdrafts:switched';
 
   function linear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
   function rgb(hex) { return [1, 3, 5].map(function (i) { return linear(parseInt(hex.slice(i, i + 2), 16) / 255); }); }
@@ -121,8 +124,21 @@
   }
 
   function post() {
-    if (!frame.contentWindow) return;
-    frame.contentWindow.postMessage({ type: 'inkdrafts:tweaks', v: 1, theme: data.theme, tweaks: read() }, location.origin);
+    var f = frame();
+    if (!f || !f.contentWindow) return;
+    f.contentWindow.postMessage({ type: 'inkdrafts:tweaks', v: 1, theme: data.theme, tweaks: read() }, location.origin);
+  }
+
+  // The cue the server set (selected differs from saved) stays; on top of it,
+  // any edit since the page loaded counts as unsaved until it is undone.
+  var cues = document.querySelectorAll('[data-unsaved-cue]');
+  var serverDirty = cues.length ? !cues[0].hidden : false;
+  var loaded = JSON.stringify(read());
+  function dirty() {
+    var now = serverDirty || JSON.stringify(read()) !== loaded;
+    Array.prototype.forEach.call(cues, function (cue) { cue.hidden = !now; });
+    form.dispatchEvent(new CustomEvent('inkdrafts:dirty', { detail: { dirty: now } }));
+    return now;
   }
 
   function syncUrl() {
@@ -144,13 +160,38 @@
     verdicts();
     post();
     syncUrl();
+    dirty();
+  }
+
+  // Changing the design is a navigation: the worker renders the new theme's
+  // controls and keeps whichever t_* it declares. Focus returns to the select.
+  var switcher = document.getElementById('theme-switch');
+  if (switcher) {
+    switcher.addEventListener('change', function () {
+      var url = new URL(switcher.form ? switcher.form.action : location.href);
+      url.search = '';
+      url.searchParams.set('theme', switcher.value);
+      var tweaks = read();
+      Object.keys(tweaks).forEach(function (k) { url.searchParams.set('t_' + k, String(tweaks[k])); });
+      var href = url.pathname + url.search;
+      // Cancelable, so a page script (the unsaved-changes bar) can hold the navigation.
+      if (!form.dispatchEvent(new CustomEvent('inkdrafts:switch', { cancelable: true, detail: { href: href, theme: switcher.value } }))) return;
+      try { sessionStorage.setItem(SWITCHED, '1'); } catch (e) { /* storage blocked */ }
+      location.assign(href);
+    });
+    try {
+      if (sessionStorage.getItem(SWITCHED)) {
+        sessionStorage.removeItem(SWITCHED);
+        switcher.focus({ preventScroll: true });
+      }
+    } catch (e) { /* storage blocked */ }
   }
 
   form.addEventListener('input', update);
   form.addEventListener('change', update);
   addEventListener('message', function (e) {
-    var x = e.data;
-    if (e.origin !== location.origin || e.source !== frame.contentWindow) return;
+    var x = e.data, f = frame();
+    if (e.origin !== location.origin || !f || e.source !== f.contentWindow) return;
     if (x && x.type === 'inkdrafts:ready' && x.v === 1 && x.theme === data.theme) post();
   });
   verdicts();

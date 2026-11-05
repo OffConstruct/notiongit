@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { JSDOM, VirtualConsole } from 'jsdom';
 
 import { route, type Env } from '../src/index';
-import { PREVIEW_HEADERS } from '../src/preview-render';
+import { PREVIEW_HEADERS, previewName, SAMPLE_NAME, withPreviewName } from '../src/preview-render';
 import { findTheme } from '../src/theme-catalog';
 
 const PUBLIC = join(import.meta.dir, '..', 'public');
@@ -58,6 +58,33 @@ describe('GET /preview/<id>/ (server-rendered tweaks)', () => {
     expect(document.documentElement.getAttribute('data-ink-mode')).toBe('auto');
     expect(document.documentElement.getAttribute('data-ink-accent')).toBe('blue');
     expect(document.querySelector('b')).toBeNull();
+  });
+
+  test('?name= replaces the sample author everywhere, escaped, and never changes the markup', async () => {
+    const plain = await render('/preview/issue/');
+    const named = await render('/preview/issue/?name=Marta%20%3Cb%3ERuiz%3C%2Fb%3E%20%26%20Co');
+    expect(plain.document.body.textContent).toContain(SAMPLE_NAME);
+    expect(named.document.body.textContent).not.toContain(SAMPLE_NAME);
+    expect(named.document.body.textContent).toContain('Marta <b>Ruiz</b> & Co');
+    expect(named.document.querySelector('b')).toBeNull();
+    expect(named.document.title).toBe(plain.document.title.replaceAll(SAMPLE_NAME, 'Marta <b>Ruiz</b> & Co'));
+    expect(named.document.querySelectorAll('*').length).toBe(plain.document.querySelectorAll('*').length);
+    // Name and tweaks combine.
+    const both = await render('/preview/issue/?t_mode=dark&name=Kofi');
+    expect(both.document.documentElement.getAttribute('data-ink-mode')).toBe('dark');
+    expect(both.document.body.textContent).toContain('Kofi');
+  });
+
+  test('previewName trims, caps and strips control characters; the sample name and blanks are no name', () => {
+    expect(previewName(new URLSearchParams('name=%20%20Ana%20%20Lima%20'))).toBe('Ana Lima');
+    expect(previewName(new URLSearchParams('name=Ana%0A%09Lima%00'))).toBe('Ana Lima');
+    expect(previewName(new URLSearchParams(`name=${'x'.repeat(200)}`))).toHaveLength(60);
+    expect(previewName(new URLSearchParams('name='))).toBeNull();
+    expect(previewName(new URLSearchParams('name=%20'))).toBeNull();
+    expect(previewName(new URLSearchParams(`name=${encodeURIComponent(SAMPLE_NAME)}`))).toBeNull();
+    expect(previewName(new URLSearchParams('t_mode=dark'))).toBeNull();
+    expect(withPreviewName('<p>Rowan Vale</p>', null)).toBe('<p>Rowan Vale</p>');
+    expect(withPreviewName('<p title="Rowan Vale">Rowan Vale</p>', 'A "quoted" <name>')).toBe('<p title="A &quot;quoted&quot; &lt;name&gt;">A &quot;quoted&quot; &lt;name&gt;</p>');
   });
 
   test('is served under the preview CSP from public/_headers', async () => {

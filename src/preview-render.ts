@@ -1,7 +1,9 @@
 /**
- * `GET /preview/<id>/?t_*`: a theme's exported preview home page with the
- * tweaks applied on the server, so the preview is right without JavaScript
- * (the no-JS Preview buttons and every first paint of a non-default look).
+ * `GET /preview/<id>/?t_*[&name=]`: a theme's exported preview home page
+ * with the tweaks applied on the server, so the preview is right without
+ * JavaScript (the no-JS Preview buttons and every first paint of a
+ * non-default look). `name` swaps the sample author for the visitor's name,
+ * preview only: the real site takes its name from Notion.
  *
  * The exported page is read from the static assets and rewritten the way the
  * template's `preview.js` rewrites it in the browser: the `<html>` data
@@ -13,6 +15,7 @@
 
 import { previewFallbackHeaders } from './http-headers';
 import { effectiveTweaks, findTheme, parseAppearanceParams, type TweakValue } from './theme-catalog';
+import { escapeHtml } from './theme-ui';
 import { previewMissPage } from './themes-page';
 
 export interface PreviewAssets {
@@ -100,6 +103,26 @@ function miss(themeId: string): Response {
   return new Response(previewMissPage(themeId), { status: 404, headers: previewFallbackHeaders() });
 }
 
+/** The sample author every exported preview is written as. */
+export const SAMPLE_NAME = 'Rowan Vale';
+export const PREVIEW_NAME_MAX_LENGTH = 60;
+
+/** `?name=` for the studio's "Your name" field: trimmed, capped, printable
+ * text only, or null when there is nothing usable to show. */
+export function previewName(params: URLSearchParams): string | null {
+  const raw = params.get('name');
+  if (raw === null) return null;
+  const name = raw.replaceAll(/[\p{C}]/gu, ' ').replaceAll(/\s+/gu, ' ').trim().slice(0, PREVIEW_NAME_MAX_LENGTH).trim();
+  return name && name !== SAMPLE_NAME ? name : null;
+}
+
+/** Every mention of the sample author becomes the visitor's name, escaped,
+ * so the preview reads as theirs. Markup never changes shape: the name only
+ * ever lands where "Rowan Vale" was, as text or inside an attribute value. */
+export function withPreviewName(document: string, name: string | null): string {
+  return name === null ? document : document.replaceAll(SAMPLE_NAME, escapeHtml(name));
+}
+
 export async function previewRenderResponse(request: Request, themeId: string, assets: PreviewAssets | undefined): Promise<Response> {
   const theme = findTheme(themeId);
   if (!theme) return miss(themeId);
@@ -115,7 +138,7 @@ export async function previewRenderResponse(request: Request, themeId: string, a
 
   const exported = await assets.fetch(new Request(staticUrl, { method: 'GET' }));
   if (!exported.ok) return miss(theme.id);
-  const document = await exported.text();
+  const document = withPreviewName(await exported.text(), previewName(params));
   let manifest: PreviewManifest;
   try {
     manifest = JSON.parse(MANIFEST_PATTERN.exec(document)?.[1] ?? '') as PreviewManifest;

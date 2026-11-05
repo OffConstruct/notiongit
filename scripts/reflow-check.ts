@@ -15,7 +15,9 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { evaluate as evaluateIn, launchChrome } from './chrome-cdp';
+import { connectPage } from '../src/connect-page';
 import { LANDING_PAGE } from '../src/landing-page';
+import { appearanceFor, findTheme } from '../src/theme-catalog';
 import { progressPage } from '../src/progress-page';
 import { projectProvisioning } from '../src/progress';
 import { createProvisioningJob } from '../src/provisioning-job';
@@ -78,6 +80,8 @@ const session = {
 
 const routes: Record<string, string> = {
   '/': LANDING_PAGE,
+  '/connect': connectPage(null),
+  '/connect-chosen': connectPage(appearanceFor(findTheme('issue')!, { mode: 'dark' })),
   '/progress-active': progressPage('job-123', snapshotFor('queued')),
   '/progress-succeeded': progressPage('job-123', snapshotFor('succeeded')),
   '/progress-failed': progressPage('job-123', snapshotFor('dead_letter')),

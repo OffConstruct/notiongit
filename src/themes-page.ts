@@ -1,35 +1,41 @@
 /**
- * `GET /themes[?category=<id>]` (gallery) and `GET /themes/<id>[?t_*]`
+ * `GET /themes[?for=<group>]` (gallery) and `GET /themes/<id>[?t_*]`
  * (detail). Both are public, server-rendered and identical for every
  * visitor, so they are cacheable. The gallery has no script; the detail page
  * loads `/assets/customizer.js` for live preview updates and
- * `/assets/preview-stage.js` for the desktop-scaled preview, and works
- * without either.
+ * `/assets/preview-stage.js` for the device-scaled preview, and works
+ * without either. The gallery and the landing page render the same cards
+ * and the same audience filter from `theme-ui.ts`.
  */
 
+import { CONNECT_PATH } from './connect-page';
 import { pageHeaders } from './http-headers';
 import {
   defaultTheme,
   findTheme,
   isThemeCategory,
   parseAppearanceParams,
-  THEME_CATEGORIES,
   THEMES,
-  themesInCategory,
   tweakQuery,
   type CatalogTheme,
   type SiteAppearance,
-  type ThemeCategory,
 } from './theme-catalog';
 import {
-  categoryLabel,
+  audienceLine,
   customizerDataHtml,
   escapeHtml,
+  galleryCardHtml,
+  GALLERY_GROUPS,
+  galleryGroup,
+  galleryGroupsOf,
+  galleryLinkFilterHtml,
+  galleryOrder,
   pageShell,
   previewFrameHtml,
   PREVIEW_STAGE_SCRIPT,
-  themeCardHtml,
+  themesInGroup,
   tweakFieldsHtml,
+  type GalleryGroup,
 } from './theme-ui';
 
 export const THEMES_PAGE_MAX_AGE_SECONDS = 300;
@@ -40,115 +46,126 @@ export function themeDetailHref(theme: CatalogTheme): string {
   return `/themes/${theme.id}`;
 }
 
-export function themesGalleryPage(category: ThemeCategory | null): string {
-  const themes = category === null ? THEMES : themesInCategory(category);
-  const used = THEME_CATEGORIES.filter((entry) => THEMES.some((theme) => theme.categories.includes(entry.id)));
-  const filter = [
-    `<li><a href="/themes"${category === null ? ' aria-current="page"' : ''}>All</a></li>`,
-    ...used.map((entry) =>
-      `<li><a href="/themes?category=${entry.id}"${entry.id === category ? ' aria-current="page"' : ''}>${escapeHtml(entry.label)}</a></li>`),
-  ].join('');
-  const heading = category === null ? 'Themes' : `Themes for ${categoryLabel(category).toLowerCase()}`;
+/** A group id (`?for=`), or a category id from an older link, to its group. */
+export function resolveGalleryGroup(value: string | null): GalleryGroup | null {
+  if (value === null) return null;
+  const group = galleryGroup(value);
+  if (group) return group;
+  if (!isThemeCategory(value)) return null;
+  return GALLERY_GROUPS.find((candidate) => candidate.categories.includes(value)) ?? null;
+}
+
+export function themesGalleryPage(requested: GalleryGroup | string | null): string {
+  const group = typeof requested === 'string' ? resolveGalleryGroup(requested) : requested;
+  const themes = galleryOrder(group === null ? THEMES : themesInGroup(group));
+  const heading = group === null ? 'Every design' : `Designs for ${group.label.toLowerCase()}`;
   return pageShell({
     title: `${heading} | InkDrafts`,
-    description: 'Pick a look for your InkDrafts site. Every theme is a real Jekyll theme in your own repository.',
+    description: 'Pick a look for your InkDrafts website. Every design is a complete site; your writing stays in Notion.',
     body: `<h1>${escapeHtml(heading)}</h1>
-<p>Every theme is part of your site’s repository. After setup, you can switch themes any time from Manage your site. Previews use sample content.</p>
-<nav aria-label="Theme categories"><ul class="chips">${filter}</ul></nav>
+<p class="lead">${THEMES.length} designs, each a complete website that works on phones and computers. Pick one to see it with sample writing and your colors. You can switch any time later from your site settings, and your writing stays where it is, in Notion.</p>
+${galleryLinkFilterHtml(THEMES, group?.id ?? null)}
 <ul class="theme-grid">
-${themes.map((theme) => themeCardHtml(theme, { href: themeDetailHref(theme), headingLevel: 2 })).join('\n')}
+${themes.map((theme, index) => galleryCardHtml(theme, { href: themeDetailHref(theme), index })).join('\n')}
 </ul>
 <section class="build" aria-labelledby="build-heading">
-<h2 id="build-heading">Build your own theme</h2>
-<p>A theme is one folder and one pull request: a manifest, its layouts and one stylesheet, checked by the same validator as every theme here.</p>
+<h2 id="build-heading">For developers: build your own design</h2>
+<p>A design is one folder and one pull request: a manifest, its layouts and one stylesheet, checked by the same validator as every design here.</p>
 <p><a href="${AUTHORING_GUIDE}">Read the theme authoring guide</a></p>
 </section>`,
   });
 }
 
-/** The theme's first category in catalog order, wrapping around, so no
- * theme is a dead end. Null when the category holds only this theme. */
-function neighbours(theme: CatalogTheme): { previous: CatalogTheme; next: CatalogTheme; siblings: readonly CatalogTheme[] } | null {
-  const siblings = themesInCategory(theme.categories[0]);
+/** The theme's first audience group, in gallery order, wrapping around, so
+ * no theme is a dead end. Null when the group holds only this theme. */
+function neighbours(theme: CatalogTheme): { previous: CatalogTheme; next: CatalogTheme; group: GalleryGroup } | null {
+  const group = galleryGroupsOf(theme)[0];
+  if (!group) return null;
+  const siblings = galleryOrder(themesInGroup(group));
   const index = siblings.findIndex((candidate) => candidate.id === theme.id);
   if (index < 0 || siblings.length < 2) return null;
   return {
-    previous: siblings[(index - 1 + siblings.length) % siblings.length],
-    next: siblings[(index + 1) % siblings.length],
-    siblings,
+    previous: siblings[(index - 1 + siblings.length) % siblings.length]!,
+    next: siblings[(index + 1) % siblings.length]!,
+    group,
   };
 }
 
-export function themeDetailPage(theme: CatalogTheme, appearance: SiteAppearance): string {
+function pagerHtml(theme: CatalogTheme, position: 'head' | 'foot'): string {
   const around = neighbours(theme);
-  const category = categoryLabel(theme.categories[0]).toLowerCase();
+  if (!around) return '';
+  const label = position === 'head' ? 'Other designs for ' : 'More designs for ';
+  return `<nav class="pager${position === 'foot' ? ' foot' : ''}" aria-label="${label}${escapeHtml(around.group.label.toLowerCase())}">
+<a href="${themeDetailHref(around.previous)}" rel="prev">← ${escapeHtml(around.previous.name)}</a>
+<p><a href="/themes?for=${around.group.id}">All for ${escapeHtml(around.group.label.toLowerCase())}</a></p>
+<a href="${themeDetailHref(around.next)}" rel="next">${escapeHtml(around.next.name)} →</a>
+</nav>`;
+}
+
+export function themeDetailPage(theme: CatalogTheme, appearance: SiteAppearance): string {
   const author = theme.author.url
     ? `<a href="${escapeHtml(theme.author.url)}">${escapeHtml(theme.author.name)}</a>`
     : escapeHtml(theme.author.name);
   const webfonts = theme.fonts.some((font) => font.webfont)
-    ? '<p class="muted">Previews load this theme’s fonts from Google Fonts, as your site will. You can switch web fonts off in the options.</p>'
+    ? '<p class="muted">The preview loads this design’s fonts from Google Fonts, as your site will. You can switch them off under Fine-tune.</p>'
     : '';
-  const chips = theme.categories
-    .map((entry) => `<li><a href="/themes?category=${entry}">${escapeHtml(categoryLabel(entry))}</a></li>`)
+  const chips = galleryGroupsOf(theme)
+    .map((group) => `<li><a href="/themes?for=${group.id}">${escapeHtml(group.label)}</a></li>`)
     .join('');
-  const others = around
-    ? around.siblings.filter((sibling) => sibling.id !== theme.id)
-      .map((sibling) => `<a href="${themeDetailHref(sibling)}">${escapeHtml(sibling.name)}</a>`).join(' · ')
-    : '';
-  const pager = around
-    ? `<nav class="pager" aria-label="More themes for ${escapeHtml(category)}">
-<a href="${themeDetailHref(around.previous)}">Previous: ${escapeHtml(around.previous.name)}</a>
-<p>More for ${escapeHtml(category)}: ${others}</p>
-<a href="${themeDetailHref(around.next)}">Next: ${escapeHtml(around.next.name)}</a>
-</nav>`
-    : '';
+  const cta = `<button type="submit" class="primary cta">Create my site with ${escapeHtml(theme.name)}</button>`;
   return pageShell({
-    title: `${theme.name} theme | InkDrafts`,
+    title: `${theme.name} design | InkDrafts`,
     description: theme.summary,
     scripts: [PREVIEW_STAGE_SCRIPT, CUSTOMIZER_SCRIPT],
-    body: `<p class="back"><a href="/themes">All themes</a></p>
+    body: `<p class="back"><a href="/themes">← All designs</a></p>
+<div class="theme-head">
+<div>
 <h1>${escapeHtml(theme.name)}</h1>
 <p class="lead">${escapeHtml(theme.summary)}</p>
+</div>
+${pagerHtml(theme, 'head')}
+</div>
+<p>${escapeHtml(theme.description)}</p>
 <div class="detail">
-<div class="preview-pin">
+<div class="preview preview-pin">
 ${previewFrameHtml(theme, appearance)}
 </div>
-<form class="tweak-form" method="get" action="/connect/github" data-customizer>
+<form class="tweak-form" method="get" action="${CONNECT_PATH}" data-customizer>
 <input type="hidden" name="theme" value="${escapeHtml(theme.id)}">
 <div class="actions">
-<button type="submit" class="primary">Use this theme</button>
+${cta}
 <button type="submit" formaction="/themes/${escapeHtml(theme.id)}" data-js-hidden>Preview</button>
+<p class="fine">Nothing is final: you can change the design and every option later from your site settings.</p>
 </div>
 <fieldset>
-<legend>Options</legend>
-${tweakFieldsHtml(theme, appearance)}
+<legend>Make it yours</legend>
+${tweakFieldsHtml(theme, appearance, { fineTune: true })}
 </fieldset>
-<p class="muted">These options are stored in your site’s <code>_config.yml</code>. You can change them later.</p>
+<div class="cta-bar"><span>Step 1 of 3</span>${cta}</div>
 </form>
 </div>
 ${customizerDataHtml(theme)}
 <div class="about">
-<p>${escapeHtml(theme.description)}</p>
 ${webfonts}
-<p class="muted">By ${author} &middot; version ${escapeHtml(theme.version)}</p>
-<ul class="chips" aria-label="Categories">${chips}</ul>
+<p class="muted">Good for: ${escapeHtml(audienceLine(theme))}. Design by ${author}.</p>
+<ul class="chips" aria-label="Browse by audience">${chips}</ul>
 </div>
-${pager}`,
+${pagerHtml(theme, 'foot')}`,
   });
 }
 
 function notFoundPage(): string {
   return pageShell({
-    title: 'Theme not found | InkDrafts',
-    body: `<h1>We could not find that theme</h1>
-<p>It may have been renamed. <a href="/themes">Browse all themes</a>.</p>`,
+    title: 'Design not found | InkDrafts',
+    body: `<h1>We could not find that design</h1>
+<p>It may have been renamed. <a href="/themes">Browse all designs</a>.</p>`,
   });
 }
 
 const PUBLIC_PAGE = { frames: false, scripts: false, publicMaxAgeSeconds: THEMES_PAGE_MAX_AGE_SECONDS } as const;
 
-/** `/themes?theme=<id>&t_*` is the landing form's "See every option"
- * button: it lands on that theme's page with the choice carried over. */
+/** `/themes?theme=<id>&t_*` lands on that theme's page with the choice
+ * carried over (links from older pages and shared URLs). */
 function chosenThemeRedirect(params: URLSearchParams): Response | null {
   const theme = findTheme(params.get('theme') ?? '');
   if (!theme) return null;
@@ -160,12 +177,17 @@ function chosenThemeRedirect(params: URLSearchParams): Response | null {
   });
 }
 
+/** `?for=<group>`; `?category=<id>` (older links) maps to the category's
+ * group. Anything unknown shows every design. */
+function requestedGroup(params: URLSearchParams): GalleryGroup | null {
+  return resolveGalleryGroup(params.get('for')) ?? resolveGalleryGroup(params.get('category'));
+}
+
 export function themesGalleryResponse(request: Request): Response {
-  const redirect = chosenThemeRedirect(new URL(request.url).searchParams);
+  const params = new URL(request.url).searchParams;
+  const redirect = chosenThemeRedirect(params);
   if (redirect) return redirect;
-  const requested = new URL(request.url).searchParams.get('category');
-  const category = requested !== null && isThemeCategory(requested) ? requested : null;
-  return new Response(themesGalleryPage(category), { status: 200, headers: pageHeaders(PUBLIC_PAGE) });
+  return new Response(themesGalleryPage(requestedGroup(params)), { status: 200, headers: pageHeaders(PUBLIC_PAGE) });
 }
 
 /** `/themes/<id>` with optional `t_*` from the no-JS Preview button or a

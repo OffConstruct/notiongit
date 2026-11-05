@@ -3,6 +3,10 @@
  * one paper ground, one ink accent, Petrona (same-origin, OFL) for display
  * and prose, the system sans for controls. Progress, status and error pages
  * take only `SITE_PALETTE`, so they match without loading the font.
+ *
+ * This module is a leaf (no catalog import), so every page shell can take
+ * the masthead and footer from here: `siteHeaderHtml()` / `siteFooterHtml()`
+ * plus `SITE_BASE_STYLES`.
  */
 
 export const SITE_FONT_URL = '/assets/fonts/petrona-latin.woff2';
@@ -69,14 +73,22 @@ export const SITE_BASE_STYLES = `${SITE_PALETTE}${FONT_FACE}  :root {
   .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--gutter); }
   .masthead { border-bottom: 1px solid var(--border); }
-  .masthead .wrap { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1.5rem; padding-block: 1.1rem; }
-  .wordmark { font: 600 1.25rem/1 var(--serif); letter-spacing: -0.01em; color: var(--fg); text-decoration: none; }
-  .masthead nav ul, .site-foot nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem 1.25rem; }
-  .masthead nav a, .site-foot nav a { font: 500 0.9rem/1.5 var(--sans); color: var(--fg); text-decoration: none; }
+  .masthead .wrap { display: flex; align-items: center; gap: 0.25rem 1rem; min-height: 3.75rem; padding-block: 0.4rem; }
+  .masthead nav { margin-left: auto; }
+  .wordmark { font: 600 1.25rem/1 var(--serif); letter-spacing: -0.01em; color: var(--fg); text-decoration: none; display: inline-flex; align-items: center; min-height: 2.75rem; }
+  .masthead nav ul, .site-foot nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 0.25rem; }
+  .masthead nav a, .site-foot nav a { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 0.6rem; font: 500 0.92rem/1.3 var(--sans); color: var(--fg); text-decoration: none; }
   .masthead nav a:hover, .site-foot nav a:hover { color: var(--accent); text-decoration: underline; }
+  .masthead .start { margin-left: 0.25rem; min-height: 2.5rem; padding: 0.5rem 0.9rem; font-size: 0.9rem; }
+  .masthead nav a.start, .masthead nav a.start:hover { color: var(--accent-fg); text-decoration: none; }
+  @media (max-width: 47.99rem) {
+    .masthead nav li:not(.keep) { display: none; }
+    .masthead nav a { padding: 0 0.4rem; }
+  }
   .site-foot { border-top: 1px solid var(--border); margin-top: 2rem; }
   .site-foot .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem 2rem; padding-block: 2rem 2.5rem; font: 0.875rem/1.6 var(--sans); color: var(--muted); }
   .site-foot p { margin: 0; max-width: 28rem; }
+  .site-foot nav ul { margin-inline: -0.6rem; }
   .site-foot nav a { color: var(--muted); font-weight: 400; }
   .button, button, .cta {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem;
@@ -92,3 +104,55 @@ export const SITE_BASE_STYLES = `${SITE_PALETTE}${FONT_FACE}  :root {
     .button:active, button:active, .cta:active { transform: scale(0.97); }
   }
 `;
+
+/** The one sentence every footer repeats. */
+export const SITE_TAGLINE = 'InkDrafts turns your Notion pages into a website you own.';
+
+export interface SiteHeaderOptions {
+  /** Hide the "Create my site" button (on the connect page, where it is the main action). */
+  readonly start?: boolean;
+  /** A signed-in owner: "Your site" replaces Sign in, and there is no start button. */
+  readonly owner?: boolean;
+}
+
+/**
+ * The masthead every public page shares: wordmark, Designs, How it works,
+ * Questions, Sign in and a compact start button. Below 48rem only Sign in
+ * and the button stay, so the header is one line on phones. The anchors
+ * point at the landing page, which the landing itself resolves in place.
+ */
+export function siteHeaderHtml(options: SiteHeaderOptions = {}): string {
+  const start = options.start === false || options.owner ? '' : '<li class="keep"><a class="cta start" href="/#start" data-start>Create my site</a></li>';
+  const account = options.owner ? '<a href="/status">Your site</a>' : '<a href="/status">Sign in</a>';
+  return `<header class="masthead">
+<div class="wrap">
+<a class="wordmark" href="/">InkDrafts</a>
+<nav aria-label="Primary"><ul>
+<li><a href="/themes">Designs</a></li>
+<li><a href="/#how-it-works">How it works</a></li>
+<li><a href="/#faq">Questions</a></li>
+<li class="keep">${account}</li>
+${start}
+</ul></nav>
+</div>
+</header>`;
+}
+
+export function siteFooterHtml(): string {
+  return `<footer class="site-foot">
+<div class="wrap">
+<p>${SITE_TAGLINE}</p>
+<nav aria-label="Footer"><ul>
+<li><a href="/themes">All designs</a></li>
+<li><a href="/status">Sign in</a></li>
+<li><a href="/support">Support</a></li>
+<li><a href="/privacy">Privacy</a></li>
+<li><a href="/terms">Terms</a></li>
+<li><a href="/security">Security</a></li>
+<li><a href="/acceptable-use">Acceptable use</a></li>
+<li><a href="/leaving">Leaving InkDrafts</a></li>
+<li><a href="https://github.com/OffConstruct/notiongit">See the code</a></li>
+</ul></nav>
+</div>
+</footer>`;
+}

@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { JSDOM, VirtualConsole } from 'jsdom';
 
 import { route } from '../src/index';
-import { defaultTheme, parseAppearanceParams, THEMES, themesInCategory } from '../src/theme-catalog';
+import { defaultTheme, parseAppearanceParams, THEMES } from '../src/theme-catalog';
+import { GALLERY_GROUPS, galleryGroupsOf, galleryOrder, themesInGroup } from '../src/theme-ui';
 
 const ROOT = join(import.meta.dir, '..');
 const CUSTOMIZER_JS = readFileSync(join(ROOT, 'public', 'assets', 'customizer.js'), 'utf8');
@@ -39,13 +40,30 @@ describe('GET /themes', () => {
     for (const src of sources) expect(src).toMatch(/^\/previews\/[a-z]+\/thumb\.webp$/u);
   });
 
-  test('the category filter is a plain GET link and an unknown category shows everything', async () => {
-    const writers = (await get('/themes?category=writers')).text;
-    const cards = [...writers.matchAll(/<li class="theme-card"/gu)].length;
-    expect(cards).toBe(themesInCategory('writers').length);
-    expect(writers).toContain('href="/themes?category=writers" aria-current="page"');
-    const bogus = (await get('/themes?category=%3Cb%3E')).text;
-    expect([...bogus.matchAll(/<li class="theme-card"/gu)].length).toBe(THEMES.length);
+  test('the audience filter is a plain GET link, old category links still work, and unknown values show everything', async () => {
+    const writing = GALLERY_GROUPS.find((group) => group.id === 'writing')!;
+    const page = (await get('/themes?for=writing')).text;
+    expect([...page.matchAll(/<a class="theme-card"/gu)].length).toBe(themesInGroup(writing).length);
+    expect(page).toContain('href="/themes?for=writing" aria-current="page"');
+    expect(page).toContain('<h1>Designs for writing &amp; blogs</h1>');
+    expect((await get('/themes?category=writers')).text).toContain('href="/themes?for=writing" aria-current="page"');
+    const bogus = (await get('/themes?for=%3Cb%3E')).text;
+    expect([...bogus.matchAll(/<a class="theme-card"/gu)].length).toBe(THEMES.length);
+    expect(bogus).not.toContain('<b>');
+  });
+
+  test('cards are whole-card links in the same curated order as the landing page', async () => {
+    const { text } = await get('/themes');
+    const hrefs = [...text.matchAll(/<a class="theme-card" href="\/themes\/([a-z]+)"/gu)].map((match) => match[1]);
+    expect(hrefs).toEqual(galleryOrder(THEMES).map((theme) => theme.id));
+    const dom = new JSDOM(text, { virtualConsole: silentConsole });
+    for (const card of dom.window.document.querySelectorAll('a.theme-card')) {
+      expect(card.querySelector('img')).not.toBeNull();
+      expect(card.querySelector('.name')!.textContent).not.toBe('');
+      expect(card.querySelector('.for')!.textContent).not.toBe('');
+    }
+    expect(text).not.toContain('Jekyll');
+    dom.window.close();
   });
 });
 
@@ -57,15 +75,22 @@ describe('GET /themes/<id>', () => {
     expect(policy['frame-src']).toBe("'self'");
     expect(policy['script-src']).toBe("'self'");
     expect(policy['form-action']).toBe("'self' https://github.com");
-    expect(text).toContain('<form class="tweak-form" method="get" action="/connect/github" data-customizer>');
+    expect(text).toContain('<form class="tweak-form" method="get" action="/connect" data-customizer>');
     expect(text).toContain('<input type="hidden" name="theme" value="classic">');
-    expect(text).toContain('<div class="preview-stage" data-preview-stage><iframe id="theme-preview" src="/previews/classic/" title="Preview of Classic" loading="lazy">');
+    expect(text).toContain('<iframe id="theme-preview" src="/previews/classic/" title="Preview of Classic with sample writing" loading="lazy" tabindex="-1">');
+    expect(text).toContain('<a class="text-link" href="/previews/classic/" target="_blank" rel="noopener" data-preview-full>Open full-size preview');
     expect(text).toContain('formaction="/themes/classic" data-js-hidden>Preview</button>');
     expect(text).toContain('<script src="/assets/preview-stage.js" defer></script>');
     expect(text).toContain('<script src="/assets/customizer.js" defer></script>');
-    // The primary action comes before the options, so it sits near the fold.
-    expect(text.indexOf('>Use this theme</button>')).toBeLessThan(text.indexOf('<legend>Options</legend>'));
-    expect(text).not.toContain('class="swatches"');
+    // The primary action comes before the options and again in the sticky bar after them.
+    expect(text.match(/>Create my site with Classic<\/button>/gu)).toHaveLength(2);
+    expect(text.indexOf('>Create my site with Classic</button>')).toBeLessThan(text.indexOf('<legend>Make it yours</legend>'));
+    expect(text.lastIndexOf('>Create my site with Classic</button>')).toBeGreaterThan(text.indexOf('<details class="fine-tune">'));
+    // The description sits under the title, before the options; no config-file or version noise.
+    expect(text.indexOf(defaultTheme().description.slice(0, 40))).toBeLessThan(text.indexOf('<div class="detail">'));
+    expect(text).not.toContain('_config.yml');
+    expect(text).not.toContain('version ');
+    expect(text).not.toContain('Use this theme');
     expect(text).toContain('id="customizer-data"');
   });
 
@@ -82,15 +107,17 @@ describe('GET /themes/<id>', () => {
     expect(text).not.toContain('<script>');
   });
 
-  test('the pager wraps around within the category and names it on screen', async () => {
+  test('the pager wraps around within the audience group, at the top and the bottom', async () => {
     for (const theme of THEMES) {
-      const siblings = themesInCategory(theme.categories[0]!);
+      const group = galleryGroupsOf(theme)[0]!;
+      const siblings = galleryOrder(themesInGroup(group));
       if (siblings.length < 2) continue;
       const { text } = await get(`/themes/${theme.id}`);
       const index = siblings.findIndex((sibling) => sibling.id === theme.id);
-      expect(text).toContain(`href="/themes/${siblings[(index + 1) % siblings.length]!.id}">Next: `);
-      expect(text).toContain(`href="/themes/${siblings[(index - 1 + siblings.length) % siblings.length]!.id}">Previous: `);
-      expect(text).toContain('<p>More for ');
+      expect(text.match(new RegExp(`href="/themes/${siblings[(index + 1) % siblings.length]!.id}" rel="next"`, 'gu'))).toHaveLength(2);
+      expect(text.match(new RegExp(`href="/themes/${siblings[(index - 1 + siblings.length) % siblings.length]!.id}" rel="prev"`, 'gu'))).toHaveLength(2);
+      expect(text).toContain(`href="/themes?for=${group.id}"`);
+      expect(text.indexOf('class="pager"')).toBeLessThan(text.indexOf('<div class="detail">'));
     }
   });
 
@@ -116,22 +143,75 @@ describe('GET /themes/<id>', () => {
   test('unknown themes are a 404 page', async () => {
     const { response, text } = await get('/themes/nope');
     expect(response.status).toBe(404);
-    expect(text).toContain('href="/themes"');
-    expect((await get('/themes/Classic')).response.status).toBe(404);
+    expect(text).toContain('href="/themes">Browse all designs</a>');
+    // The router owns capitalised paths (it redirects them); only the lowercase miss is this page's.
+    expect((await get('/themes/classicx')).response.status).toBe(404);
   });
 
   test('every catalog theme detail page renders', async () => {
     for (const theme of THEMES) {
       const { response, text } = await get(`/themes/${theme.id}`);
       expect(response.status).toBe(200);
-      expect(text).toContain(`title="Preview of ${theme.name}"`);
+      expect(text).toContain(`title="Preview of ${theme.name} with sample writing"`);
+      expect(text).toContain(`>Create my site with ${theme.name}</button>`);
     }
   });
 });
 
 describe('customizer.js', () => {
-  test('stays under its 8 KB budget', () => {
-    expect(CUSTOMIZER_JS.length).toBeLessThanOrEqual(8 * 1024);
+  test('stays under its 10 KB budget', () => {
+    expect(CUSTOMIZER_JS.length).toBeLessThanOrEqual(10 * 1024);
+  });
+
+  test('on the customize screen, changing the design navigates at once and the unsaved cue follows the form', async () => {
+    const { appearancePage } = await import('../src/appearance-page');
+    const { appearanceFor } = await import('../src/theme-catalog');
+    const classic = defaultTheme();
+    const html = appearancePage({
+      kind: 'editor',
+      site: { login: 'alice', repositoryName: 'alice.github.io', repositoryUrl: 'https://github.com/alice/alice.github.io', defaultBranch: 'main', siteUrl: 'https://alice.github.io' },
+      offered: THEMES,
+      current: appearanceFor(classic, {}),
+      selected: appearanceFor(classic, {}),
+      notice: null,
+      error: null,
+      formToken: 'token',
+    });
+    const dom = new JSDOM(html, { url: 'https://inkdrafts.test/status/appearance', runScripts: 'outside-only', virtualConsole: silentConsole });
+    const { document } = dom.window;
+    const navigations: string[] = [];
+    const frame = document.getElementById('theme-preview') as HTMLIFrameElement;
+    (frame.contentWindow as unknown as { postMessage: () => void }).postMessage = () => undefined;
+    dom.window.eval(CUSTOMIZER_JS);
+
+    // The no-JS "Show this design" button gives way to the select itself.
+    expect((document.querySelector('[data-theme-switch-submit]') as HTMLElement).hidden).toBe(true);
+    const cue = document.querySelector('[data-unsaved-cue]') as HTMLElement;
+    expect(cue.hidden).toBe(true);
+    const dirtyEvents: boolean[] = [];
+    const form = document.querySelector('form[data-customizer]')!;
+    form.addEventListener('inkdrafts:dirty', (event) => dirtyEvents.push((event as CustomEvent<{ dirty: boolean }>).detail.dirty));
+    // jsdom cannot navigate; the switch is announced first, cancelably, so a page script can hold it.
+    form.addEventListener('inkdrafts:switch', (event) => { navigations.push((event as CustomEvent<{ href: string }>).detail.href); event.preventDefault(); });
+
+    const mode = document.querySelector('input[name="t_mode"][value="dark"]') as HTMLInputElement;
+    mode.checked = true;
+    mode.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    expect(cue.hidden).toBe(false);
+    expect(dirtyEvents.at(-1)).toBe(true);
+    const auto = document.querySelector('input[name="t_mode"][value="auto"]') as HTMLInputElement;
+    auto.checked = true;
+    auto.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    expect(cue.hidden).toBe(true);
+
+    mode.checked = true;
+    mode.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    const other = THEMES.find((theme) => theme.id !== classic.id)!;
+    const select = document.getElementById('theme-switch') as HTMLSelectElement;
+    select.value = other.id;
+    select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    expect(navigations).toEqual([`/status/appearance?theme=${other.id}&t_mode=dark`]);
+    dom.window.close();
   });
 
   test('posts validated tweaks to the preview on change and mirrors them in the URL', async () => {

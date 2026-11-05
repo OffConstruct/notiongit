@@ -15,12 +15,13 @@ import { join } from 'node:path';
 import { JSDOM, VirtualConsole } from 'jsdom';
 
 import type { ProvisioningFailureCode } from '../src/failures';
+import { connectPage } from '../src/connect-page';
 import { LANDING_PAGE } from '../src/landing-page';
 import { POLICY_PAGES, POLICY_PATHS } from '../src/policy-pages';
 import { createProvisioningJob, PROVISIONING_STEP_ORDER, type ProvisioningJob } from '../src/provisioning-job';
 import { progressPage, type SiteCheckOutcome } from '../src/progress-page';
 import { projectProvisioning, type ProgressSnapshot } from '../src/progress';
-import { THEMES } from '../src/theme-catalog';
+import { appearanceFor, findTheme, THEMES } from '../src/theme-catalog';
 import { statusPage, statusRefusalPage, type StatusPageChrome, type StatusPageModel } from '../src/status-page';
 import type { DeployOutcome, SiteStatus, SyncOutcome } from '../src/status';
 import { themePageStates } from './fixtures/theme-pages';
@@ -42,23 +43,36 @@ interface AxeViolation {
   readonly nodes: readonly AxeNode[];
 }
 
-/** Runs axe against a full document and returns only its violations. */
-function runAxe(documentHtml: string): Promise<readonly AxeViolation[]> {
-  const { window } = new JSDOM(documentHtml, { pretendToBeVisual: true, runScripts: 'outside-only', virtualConsole: silentConsole });
+type AxeWindow = JSDOM['window'] & { axe: { run: (context: Document | string, options: object, callback: (error: Error | null, results: { violations: AxeViolation[] }) => void) => void } };
+
+/** A document with axe loaded; the caller scans it (once or repeatedly) and closes it. */
+function axeWindow(documentHtml: string, url = 'https://inkdrafts.test/'): AxeWindow {
+  const { window } = new JSDOM(documentHtml, { url, pretendToBeVisual: true, runScripts: 'outside-only', virtualConsole: silentConsole });
   // jsdom has no layout engine, so hit-testing has no real answer; an empty
   // result degrades the dependent checks to "incomplete" instead of crashing.
   (window.document as unknown as { elementsFromPoint: () => unknown[] }).elementsFromPoint = () => [];
   window.eval(axeSource);
-  const axe = window.eval('axe') as {
-    run: (context: Document, options: object, callback: (error: Error | null, results: { violations: AxeViolation[] }) => void) => void;
-  };
+  return window as AxeWindow;
+}
+
+/** Scans `context` (the whole document, or one region by selector) in an open window. */
+function scan(window: AxeWindow, context: Document | string = window.document): Promise<readonly AxeViolation[]> {
   return new Promise((resolve, reject) => {
-    axe.run(window.document, { resultTypes: ['violations'] }, (error, results) => {
+    window.axe.run(context, { resultTypes: ['violations'] }, (error, results) => {
       if (error) reject(error);
       else resolve(results.violations);
-      window.close();
     });
   });
+}
+
+/** Runs axe against a full document and returns only its violations. */
+async function runAxe(documentHtml: string): Promise<readonly AxeViolation[]> {
+  const window = axeWindow(documentHtml);
+  try {
+    return await scan(window);
+  } finally {
+    window.close();
+  }
 }
 
 function seriousOrCritical(violations: readonly AxeViolation[]): readonly AxeViolation[] {
@@ -100,19 +114,29 @@ describe('accessibility suite', () => {
     await expectAccessible('landing', LANDING_PAGE);
   });
 
-  test('landing page with the customizer enhanced by landing.js has no serious or critical violations', async () => {
-    const { window } = new JSDOM(LANDING_PAGE, { url: 'https://inkdrafts.test/', runScripts: 'outside-only', virtualConsole: silentConsole });
+  // One window, enhanced once; the whole page is scanned for the first theme
+  // and then only the studio (the one region landing.js rewrites) for each
+  // other theme, which is what keeps this under a few seconds.
+  test('landing page with the studio enhanced by landing.js has no serious or critical violations for any theme', async () => {
+    const window = axeWindow(LANDING_PAGE);
+    (window.HTMLElement.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined;
     window.eval(readFileSync(join(import.meta.dir, '..', 'public', 'assets', 'landing.js'), 'utf8'));
+    expect(violationReport('landing+js', seriousOrCritical(await scan(window)))).toEqual([]);
     for (const theme of THEMES) {
-      const pick = window.document.getElementById('theme-pick') as HTMLSelectElement;
-      pick.value = theme.id;
-      pick.dispatchEvent(new window.Event('change', { bubbles: true }));
-      const more = window.document.querySelector('details.more-options') as HTMLDetailsElement | null;
+      const card = window.document.querySelector(`a[data-pick="${theme.id}"]`) as HTMLAnchorElement;
+      card.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+      const more = window.document.querySelector('details.fine-tune') as HTMLDetailsElement | null;
       if (more) more.open = true;
-      await expectAccessible(`landing+${theme.id}`, `<!doctype html>${window.document.documentElement.outerHTML}`);
+      expect(window.document.querySelector('#start [data-theme-name]')!.textContent).toBe(theme.name);
+      expect(violationReport(`landing+${theme.id}`, seriousOrCritical(await scan(window, '#start')))).toEqual([]);
     }
     window.close();
-  }, 180_000);
+  }, 60_000);
+
+  test('the connect page has no serious or critical violations', async () => {
+    await expectAccessible('connect', connectPage(null));
+    await expectAccessible('connect/chosen', connectPage(appearanceFor(findTheme('issue')!, { mode: 'dark' })));
+  });
 
   test('every progress state has no serious or critical violations', async () => {
     for (const [label, documentHtml] of Object.entries(progressStates())) {
