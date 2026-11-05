@@ -31,6 +31,7 @@ import {
   type CatalogTheme,
   type CatalogTweak,
   type SiteAppearance,
+  type ThemeAudience,
   type ThemeCategory,
   type TweakValue,
 } from './theme-catalog';
@@ -91,15 +92,19 @@ export function schemeDefault(theme: CatalogTheme): string {
 
 /** Plain-language audiences over the catalog's categories. Every category
  * belongs to exactly one group, so a theme's groups follow from its
- * manifest and the filters can never show a label no theme has. */
+ * manifest and the filters can never show a label no theme has. A group
+ * with an `audience` cuts across the categories: it holds the themes whose
+ * manifest lists that audience. */
 export interface GalleryGroup {
   readonly id: string;
   readonly label: string;
   readonly categories: readonly ThemeCategory[];
+  readonly audience?: ThemeAudience;
 }
 
 export const GALLERY_GROUPS: readonly GalleryGroup[] = [
   { id: 'writing', label: 'Writing & blogs', categories: ['writers'] },
+  { id: 'personal', label: 'Personal & family', categories: [], audience: 'personal' },
   { id: 'visual', label: 'Photos & art', categories: ['photographers', 'artists', 'designers'] },
   { id: 'music', label: 'Music', categories: ['musicians'] },
   { id: 'business', label: 'Small business', categories: ['entrepreneurs', 'marketing'] },
@@ -111,8 +116,13 @@ export function galleryGroup(id: string): GalleryGroup | null {
   return GALLERY_GROUPS.find((group) => group.id === id) ?? null;
 }
 
+/** Category groups first, so a theme's first group is always its own kind
+ * of site (the switcher and the detail pager key on it), then audiences. */
 export function galleryGroupsOf(theme: CatalogTheme): readonly GalleryGroup[] {
-  return GALLERY_GROUPS.filter((group) => group.categories.some((category) => theme.categories.includes(category)));
+  return [
+    ...GALLERY_GROUPS.filter((group) => group.categories.some((category) => theme.categories.includes(category))),
+    ...GALLERY_GROUPS.filter((group) => group.audience !== undefined && theme.audience.includes(group.audience)),
+  ];
 }
 
 export function themesInGroup(group: GalleryGroup): readonly CatalogTheme[] {
@@ -322,8 +332,6 @@ ${siteFooterHtml()}
 </html>`;
 }
 
-/** One compact picker: offered themes grouped by their first category, in
- * catalog order, each listed once. */
 /** The design switcher: the gallery's audience groups, each design once
  * under its first group, in gallery order. */
 export function themeOptionsHtml(themes: readonly CatalogTheme[], selected: string): string {
@@ -347,12 +355,23 @@ export interface GalleryCardOptions {
 
 const EAGER_CARDS = 8;
 
+/** A thumbnail `<img>` that lets the browser take the 320w shot when
+ * `sizes` says the slot is small enough. */
+export function thumbnailImgHtml(theme: CatalogTheme, sizes: string, extra = ''): string {
+  return `<img src="${escapeHtml(theme.thumbnail)}" srcset="${escapeHtml(theme.thumbnailSmall)} 320w, ${escapeHtml(theme.thumbnail)} 640w" sizes="${sizes}" width="640" height="400" alt=""${extra}>`;
+}
+
+/** Gallery cards: two columns of about 45vw on phones, up to 22rem wide
+ * above. 40vw (not 45) lets a 2x phone take the 320w shot at 1.9x, which
+ * looks the same on a card that small and costs a third of the bytes. */
+const CARD_SIZES = '(max-width: 39.99rem) 40vw, 22rem';
+
 /** A gallery card: thumbnail, name, audience and summary, all inside one
  * link, so the whole card is the target. */
 export function galleryCardHtml(theme: CatalogTheme, options: GalleryCardOptions): string {
   const groups = galleryGroupsOf(theme).map((group) => group.id).join(' ');
   const loading = (options.index ?? EAGER_CARDS) < EAGER_CARDS ? 'eager' : 'lazy';
-  return `<li data-group="${escapeHtml(groups)}"><a class="theme-card" href="${escapeHtml(options.href)}"${options.pick ? ` data-pick="${theme.id}"` : ''}${options.current ? ' aria-current="true"' : ''}><span class="thumb"><img src="${escapeHtml(theme.thumbnail)}" width="640" height="400" alt="" loading="${loading}" decoding="async"></span><span class="name">${escapeHtml(theme.name)}</span><span class="for">${escapeHtml(audienceLine(theme))}</span><span class="summary">${escapeHtml(theme.summary)}</span></a></li>`;
+  return `<li data-group="${escapeHtml(groups)}"><a class="theme-card" href="${escapeHtml(options.href)}"${options.pick ? ` data-pick="${theme.id}"` : ''}${options.current ? ' aria-current="true"' : ''}><span class="thumb">${thumbnailImgHtml(theme, CARD_SIZES, ` loading="${loading}" decoding="async"`)}</span><span class="name">${escapeHtml(theme.name)}</span><span class="for">${escapeHtml(audienceLine(theme))}</span><span class="summary">${escapeHtml(theme.summary)}</span></a></li>`;
 }
 
 /** Kept for the customize screen's "Browse every design" list. */

@@ -49,6 +49,7 @@ import {
   schemeChoices,
   schemeDefault,
   scriptJson,
+  thumbnailImgHtml,
 } from './theme-ui';
 
 const SITE_URL = 'https://inkdrafts.com/';
@@ -68,7 +69,9 @@ const SOCIAL_DESCRIPTION = 'Pick a design, write in Notion, and it is on the web
 const FAVICON =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='3' fill='%23283a8f'/%3E%3Ctext x='16' y='22.5' font-family='Georgia,serif' font-size='17' font-weight='600' fill='%23ffffff' text-anchor='middle'%3EId%3C/text%3E%3C/svg%3E";
 
-const HERO_THEMES = ['issue', 'keynote', 'verso'];
+/** Sites a non-technical visitor recognizes: a painter with a shop, a
+ * musician with dates, a photographer's portfolio. */
+const HERO_THEMES = ['atelier', 'halo', 'verso'];
 
 /** The studio opens on a rich look, not the sparsest; Classic stays the
  * catalog default for sites that never chose. */
@@ -253,7 +256,7 @@ const CARDS = ORDERED.map((theme, index) => galleryCardHtml(theme, { href: `/the
 const FEATURED = FEATURED_THEMES
   .map((id) => findTheme(id))
   .filter((theme): theme is CatalogTheme => theme !== null)
-  .map((theme) => `<label class="pick"><input type="radio" name="theme" id="pick-${theme.id}" value="${theme.id}"${theme.id === DEFAULT_THEME.id ? ' checked' : ''}><img src="${escapeHtml(theme.thumbnail)}" width="640" height="400" alt=""><span class="pick-name">${escapeHtml(theme.name)}</span><span class="pick-for">${escapeHtml(audienceLine(theme))}</span></label>`)
+  .map((theme) => `<label class="pick"><input type="radio" name="theme" id="pick-${theme.id}" value="${theme.id}"${theme.id === DEFAULT_THEME.id ? ' checked' : ''}>${thumbnailImgHtml(theme, '(min-width: 64rem) 7rem, 31vw')}<span class="pick-name">${escapeHtml(theme.name)}</span><span class="pick-for">${escapeHtml(audienceLine(theme))}</span></label>`)
   .join('\n');
 
 /** The default theme's scheme pills, for the no-JS form; landing.js rebuilds
@@ -309,7 +312,7 @@ export const LANDING_DATA = {
 const HERO_SPREAD = HERO_THEMES
   .map((id) => findTheme(id))
   .filter((theme): theme is CatalogTheme => theme !== null)
-  .map((theme) => `<div class="shot"><div class="bar"><i></i><i></i><i></i><b>rowanvale.github.io</b></div><img src="${escapeHtml(theme.thumbnail)}" width="640" height="400" alt=""></div>`)
+  .map((theme) => `<div class="shot"><div class="bar"><i></i><i></i><i></i><b>rowanvale.github.io</b></div>${thumbnailImgHtml(theme, '(min-width: 60rem) 20rem, 60vw')}</div>`)
   .join('');
 
 const HERO_NAMES = HERO_THEMES.map((id) => findTheme(id)?.name).filter(Boolean).join(', ');
@@ -387,7 +390,7 @@ ${siteHeaderHtml()}
         </ul>
         <p class="resume">Already started? <a href="/status">Continue where you left off</a></p>
       </div>
-      <figure class="spread">${HERO_SPREAD}<figcaption class="visually-hidden">One person, three looks: ${escapeHtml(HERO_NAMES)}. The same words, written once in Notion.</figcaption></figure>
+      <figure class="spread">${HERO_SPREAD}<figcaption class="visually-hidden">Three sites made with InkDrafts designs: ${escapeHtml(HERO_NAMES)}. Each one is written in Notion.</figcaption></figure>
     </div>
   </section>
 
