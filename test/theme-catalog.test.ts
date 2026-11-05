@@ -17,6 +17,7 @@ import {
   readAppearanceBlock,
   renderAppearanceBlock,
   resolveStoredAppearance,
+  THEME_AUDIENCES,
   THEME_CATEGORIES,
   THEMES,
   type CatalogTheme,
@@ -58,12 +59,14 @@ const GOLDEN_THEME: CatalogTheme = {
   summary: 'A theme that exercises every tweak type.',
   description: 'Golden fixture.',
   categories: ['writers'],
+  audience: [],
   author: { name: 'InkDrafts' },
   palette: GOLDEN.manifest.palette,
   fonts: GOLDEN.manifest.fonts.map((font) => ({ value: font.value, label: font.label, webfont: font.google !== null })),
   tweaks: GOLDEN.manifest.tweaks,
   preview: '/previews/golden/',
   thumbnail: '/previews/golden/thumb.webp',
+  thumbnailSmall: '/previews/golden/thumb-320.webp',
 };
 
 const silentConsole = new VirtualConsole();
@@ -113,8 +116,10 @@ describe('generated catalog', () => {
     for (const theme of THEMES) {
       expect(existsSync(join(PREVIEWS, theme.id, 'index.html'))).toBe(true);
       expect(existsSync(join(PREVIEWS, theme.id, 'thumb.webp'))).toBe(true);
+      expect(existsSync(join(PREVIEWS, theme.id, 'thumb-320.webp'))).toBe(true);
       expect(theme.preview).toBe(`/previews/${theme.id}/`);
       expect(theme.thumbnail).toBe(`/previews/${theme.id}/thumb.webp`);
+      expect(theme.thumbnailSmall).toBe(`/previews/${theme.id}/thumb-320.webp`);
     }
   });
 
@@ -168,6 +173,14 @@ describe('generated catalog', () => {
     expect(THEME_CATEGORIES.map((category) => category.id)).toEqual(expected);
     for (const theme of THEMES) {
       for (const category of theme.categories) expect(expected).toContain(category);
+    }
+  });
+
+  test('the audience enum equals the template schema enum', () => {
+    const schemaPath = join(TEMPLATE, 'scripts', 'themes', 'theme.schema.json');
+    if (existsSync(schemaPath)) expect(THEME_AUDIENCES).toEqual(JSON.parse(readFileSync(schemaPath, 'utf8')).$defs.audience.enum);
+    for (const theme of THEMES) {
+      for (const audience of theme.audience) expect(THEME_AUDIENCES).toContain(audience);
     }
   });
 

@@ -93,7 +93,7 @@ const routes: Record<string, string> = {
 // The landing page runs with its real script, font and thumbnails, so the
 // enhanced customizer is what gets walked. Preview pages stay unserved: their
 // own links would otherwise join the keyboard walk through the iframe.
-const STATIC_FILE = /^\/(assets\/[\w./-]+|previews\/[a-z]+\/thumb\.webp)$/u;
+const STATIC_FILE = /^\/(assets\/[\w./-]+|previews\/[a-z]+\/thumb(-320)?\.webp)$/u;
 const PUBLIC_DIR = join(import.meta.dir, '..', 'public');
 
 // The same landing document again with scripts off, as a visitor without

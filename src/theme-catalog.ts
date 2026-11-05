@@ -27,6 +27,10 @@ export type ThemeCategory =
   | 'marketing'
   | 'professionals';
 
+/** Mirrors the template schema's `audience` enum: a filter across categories. */
+export const THEME_AUDIENCES = ['personal'] as const;
+export type ThemeAudience = (typeof THEME_AUDIENCES)[number];
+
 export type TweakValue = string | boolean | number;
 
 export interface Swatch {
@@ -87,6 +91,7 @@ export interface CatalogThemeData {
   readonly summary: string;
   readonly description: string;
   readonly categories: readonly ThemeCategory[];
+  readonly audience: readonly ThemeAudience[];
   readonly author: { readonly name: string; readonly url?: string };
   readonly palette: { readonly light: Swatch; readonly dark: Swatch };
   readonly fonts: readonly CatalogFont[];
@@ -95,6 +100,8 @@ export interface CatalogThemeData {
   readonly preview: string;
   /** Same-origin 640x400 webp, `/previews/<id>/thumb.webp`. */
   readonly thumbnail: string;
+  /** The same shot at 320x200, `/previews/<id>/thumb-320.webp`. */
+  readonly thumbnailSmall: string;
 }
 
 export type CatalogTheme = Omit<CatalogThemeData, 'id'> & { readonly id: ThemeId };

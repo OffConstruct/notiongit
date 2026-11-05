@@ -3,7 +3,7 @@
 import type { ThemeCatalogData } from './theme-catalog';
 
 export const THEME_CATALOG_DATA: ThemeCatalogData = {
-  "templateCommit": "f57f9173b598c2411783c014e82c8dacb7163389",
+  "templateCommit": "48e7ecac0376ff493829f7ee31e00ade9bcb61fa",
   "templateDirty": false,
   "categories": [
     {
@@ -61,6 +61,9 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "marketing",
         "educators"
+      ],
+      "audience": [
+        "personal"
       ],
       "author": {
         "name": "InkDrafts",
@@ -258,7 +261,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/almanac/",
-      "thumbnail": "/previews/almanac/thumb.webp"
+      "thumbnail": "/previews/almanac/thumb.webp",
+      "thumbnailSmall": "/previews/almanac/thumb-320.webp"
     },
     {
       "id": "anamorph",
@@ -270,6 +274,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "photographers",
         "musicians"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -462,7 +467,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/anamorph/",
-      "thumbnail": "/previews/anamorph/thumb.webp"
+      "thumbnail": "/previews/anamorph/thumb.webp",
+      "thumbnailSmall": "/previews/anamorph/thumb-320.webp"
     },
     {
       "id": "atelier",
@@ -473,6 +479,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "artists"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -635,7 +642,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/atelier/",
-      "thumbnail": "/previews/atelier/thumb.webp"
+      "thumbnail": "/previews/atelier/thumb.webp",
+      "thumbnailSmall": "/previews/atelier/thumb-320.webp"
     },
     {
       "id": "byline",
@@ -646,6 +654,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "writers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -826,7 +835,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/byline/",
-      "thumbnail": "/previews/byline/thumb.webp"
+      "thumbnail": "/previews/byline/thumb.webp",
+      "thumbnailSmall": "/previews/byline/thumb-320.webp"
     },
     {
       "id": "cathode",
@@ -837,6 +847,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "developers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -983,7 +994,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/cathode/",
-      "thumbnail": "/previews/cathode/thumb.webp"
+      "thumbnail": "/previews/cathode/thumb.webp",
+      "thumbnailSmall": "/previews/cathode/thumb-320.webp"
     },
     {
       "id": "chalkboard",
@@ -995,6 +1007,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "educators",
         "developers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -1150,7 +1163,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/chalkboard/",
-      "thumbnail": "/previews/chalkboard/thumb.webp"
+      "thumbnail": "/previews/chalkboard/thumb.webp",
+      "thumbnailSmall": "/previews/chalkboard/thumb-320.webp"
     },
     {
       "id": "classic",
@@ -1161,6 +1175,9 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "writers",
         "developers"
+      ],
+      "audience": [
+        "personal"
       ],
       "author": {
         "name": "InkDrafts",
@@ -1248,7 +1265,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/classic/",
-      "thumbnail": "/previews/classic/thumb.webp"
+      "thumbnail": "/previews/classic/thumb.webp",
+      "thumbnailSmall": "/previews/classic/thumb-320.webp"
     },
     {
       "id": "confetti",
@@ -1258,6 +1276,9 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "description": "For illustrators who love color. Your bio comes first, your name sits huge at the bottom of the first screen, and your posts follow as a sheet of bright color panels. Posts without a picture become solid color panels, and every artwork is shown whole, never cropped.",
       "categories": [
         "artists"
+      ],
+      "audience": [
+        "personal"
       ],
       "author": {
         "name": "InkDrafts",
@@ -1435,7 +1456,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/confetti/",
-      "thumbnail": "/previews/confetti/thumb.webp"
+      "thumbnail": "/previews/confetti/thumb.webp",
+      "thumbnailSmall": "/previews/confetti/thumb-320.webp"
     },
     {
       "id": "crate",
@@ -1446,6 +1468,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "musicians"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -1604,7 +1627,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/crate/",
-      "thumbnail": "/previews/crate/thumb.webp"
+      "thumbnail": "/previews/crate/thumb.webp",
+      "thumbnailSmall": "/previews/crate/thumb-320.webp"
     },
     {
       "id": "dispatch",
@@ -1616,6 +1640,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "marketing",
         "writers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -1774,7 +1799,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/dispatch/",
-      "thumbnail": "/previews/dispatch/thumb.webp"
+      "thumbnail": "/previews/dispatch/thumb.webp",
+      "thumbnailSmall": "/previews/dispatch/thumb-320.webp"
     },
     {
       "id": "dossier",
@@ -1785,6 +1811,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "professionals"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -1971,7 +1998,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/dossier/",
-      "thumbnail": "/previews/dossier/thumb.webp"
+      "thumbnail": "/previews/dossier/thumb.webp",
+      "thumbnailSmall": "/previews/dossier/thumb-320.webp"
     },
     {
       "id": "halo",
@@ -1982,6 +2010,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "musicians"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -2150,7 +2179,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/halo/",
-      "thumbnail": "/previews/halo/thumb.webp"
+      "thumbnail": "/previews/halo/thumb.webp",
+      "thumbnailSmall": "/previews/halo/thumb-320.webp"
     },
     {
       "id": "issue",
@@ -2161,6 +2191,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "writers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -2333,7 +2364,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/issue/",
-      "thumbnail": "/previews/issue/thumb.webp"
+      "thumbnail": "/previews/issue/thumb.webp",
+      "thumbnailSmall": "/previews/issue/thumb-320.webp"
     },
     {
       "id": "keynote",
@@ -2345,6 +2377,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "educators",
         "professionals"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -2507,7 +2540,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/keynote/",
-      "thumbnail": "/previews/keynote/thumb.webp"
+      "thumbnail": "/previews/keynote/thumb.webp",
+      "thumbnailSmall": "/previews/keynote/thumb-320.webp"
     },
     {
       "id": "lattice",
@@ -2519,6 +2553,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "researchers",
         "educators"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -2669,7 +2704,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/lattice/",
-      "thumbnail": "/previews/lattice/thumb.webp"
+      "thumbnail": "/previews/lattice/thumb.webp",
+      "thumbnailSmall": "/previews/lattice/thumb-320.webp"
     },
     {
       "id": "lectern",
@@ -2681,6 +2717,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "educators",
         "researchers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -2811,7 +2848,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/lectern/",
-      "thumbnail": "/previews/lectern/thumb.webp"
+      "thumbnail": "/previews/lectern/thumb.webp",
+      "thumbnailSmall": "/previews/lectern/thumb-320.webp"
     },
     {
       "id": "ledger",
@@ -2823,6 +2861,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "entrepreneurs",
         "developers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -2975,7 +3014,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/ledger/",
-      "thumbnail": "/previews/ledger/thumb.webp"
+      "thumbnail": "/previews/ledger/thumb.webp",
+      "thumbnailSmall": "/previews/ledger/thumb-320.webp"
     },
     {
       "id": "letterhead",
@@ -2986,6 +3026,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "professionals"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -3166,7 +3207,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/letterhead/",
-      "thumbnail": "/previews/letterhead/thumb.webp"
+      "thumbnail": "/previews/letterhead/thumb.webp",
+      "thumbnailSmall": "/previews/letterhead/thumb-320.webp"
     },
     {
       "id": "liner",
@@ -3177,6 +3219,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "musicians"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -3341,7 +3384,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/liner/",
-      "thumbnail": "/previews/liner/thumb.webp"
+      "thumbnail": "/previews/liner/thumb.webp",
+      "thumbnailSmall": "/previews/liner/thumb-320.webp"
     },
     {
       "id": "loupe",
@@ -3352,6 +3396,9 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "photographers",
         "designers"
+      ],
+      "audience": [
+        "personal"
       ],
       "author": {
         "name": "InkDrafts",
@@ -3532,7 +3579,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/loupe/",
-      "thumbnail": "/previews/loupe/thumb.webp"
+      "thumbnail": "/previews/loupe/thumb.webp",
+      "thumbnailSmall": "/previews/loupe/thumb-320.webp"
     },
     {
       "id": "margin",
@@ -3542,6 +3590,9 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "description": "A letter-like home in one narrow column: your name and tagline, your bio as plain text, then sections for selected work, writing and links elsewhere. Posts are simple title and date rows, and long reads are set for comfortable reading. For designers and writers whose taste shows in the details.",
       "categories": [
         "designers"
+      ],
+      "audience": [
+        "personal"
       ],
       "author": {
         "name": "InkDrafts",
@@ -3719,7 +3770,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/margin/",
-      "thumbnail": "/previews/margin/thumb.webp"
+      "thumbnail": "/previews/margin/thumb.webp",
+      "thumbnailSmall": "/previews/margin/thumb-320.webp"
     },
     {
       "id": "marquee",
@@ -3731,6 +3783,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "entrepreneurs",
         "marketing"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -3889,7 +3942,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/marquee/",
-      "thumbnail": "/previews/marquee/thumb.webp"
+      "thumbnail": "/previews/marquee/thumb.webp",
+      "thumbnailSmall": "/previews/marquee/thumb-320.webp"
     },
     {
       "id": "megaphone",
@@ -3901,6 +3955,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "marketing",
         "entrepreneurs"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -4087,7 +4142,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/megaphone/",
-      "thumbnail": "/previews/megaphone/thumb.webp"
+      "thumbnail": "/previews/megaphone/thumb.webp",
+      "thumbnailSmall": "/previews/megaphone/thumb-320.webp"
     },
     {
       "id": "memo",
@@ -4099,6 +4155,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "entrepreneurs",
         "writers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -4255,7 +4312,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/memo/",
-      "thumbnail": "/previews/memo/thumb.webp"
+      "thumbnail": "/previews/memo/thumb.webp",
+      "thumbnailSmall": "/previews/memo/thumb-320.webp"
     },
     {
       "id": "plaintext",
@@ -4266,6 +4324,9 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "developers",
         "writers"
+      ],
+      "audience": [
+        "personal"
       ],
       "author": {
         "name": "InkDrafts",
@@ -4419,7 +4480,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/plaintext/",
-      "thumbnail": "/previews/plaintext/thumb.webp"
+      "thumbnail": "/previews/plaintext/thumb.webp",
+      "thumbnailSmall": "/previews/plaintext/thumb-320.webp"
     },
     {
       "id": "poster",
@@ -4430,6 +4492,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "designers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -4590,7 +4653,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/poster/",
-      "thumbnail": "/previews/poster/thumb.webp"
+      "thumbnail": "/previews/poster/thumb.webp",
+      "thumbnailSmall": "/previews/poster/thumb-320.webp"
     },
     {
       "id": "press",
@@ -4602,6 +4666,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "researchers",
         "writers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -4762,7 +4827,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/press/",
-      "thumbnail": "/previews/press/thumb.webp"
+      "thumbnail": "/previews/press/thumb.webp",
+      "thumbnailSmall": "/previews/press/thumb-320.webp"
     },
     {
       "id": "quire",
@@ -4772,6 +4838,9 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "description": "A home page laid out like the first pages of a book: a title page, a preface, then a numbered contents list. Featured posts with pictures sit on a shelf, one per row, and posts open like chapters with a large first letter. For writers and essayists.",
       "categories": [
         "writers"
+      ],
+      "audience": [
+        "personal"
       ],
       "author": {
         "name": "InkDrafts",
@@ -4937,7 +5006,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/quire/",
-      "thumbnail": "/previews/quire/thumb.webp"
+      "thumbnail": "/previews/quire/thumb.webp",
+      "thumbnailSmall": "/previews/quire/thumb-320.webp"
     },
     {
       "id": "sidenote",
@@ -4949,6 +5019,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         "researchers",
         "writers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -5083,7 +5154,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/sidenote/",
-      "thumbnail": "/previews/sidenote/thumb.webp"
+      "thumbnail": "/previews/sidenote/thumb.webp",
+      "thumbnailSmall": "/previews/sidenote/thumb-320.webp"
     },
     {
       "id": "signal",
@@ -5094,6 +5166,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "professionals"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -5273,7 +5346,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/signal/",
-      "thumbnail": "/previews/signal/thumb.webp"
+      "thumbnail": "/previews/signal/thumb.webp",
+      "thumbnailSmall": "/previews/signal/thumb-320.webp"
     },
     {
       "id": "specimen",
@@ -5284,6 +5358,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "designers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -5440,7 +5515,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/specimen/",
-      "thumbnail": "/previews/specimen/thumb.webp"
+      "thumbnail": "/previews/specimen/thumb.webp",
+      "thumbnailSmall": "/previews/specimen/thumb-320.webp"
     },
     {
       "id": "verso",
@@ -5451,6 +5527,9 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "photographers",
         "artists"
+      ],
+      "audience": [
+        "personal"
       ],
       "author": {
         "name": "InkDrafts",
@@ -5618,7 +5697,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/verso/",
-      "thumbnail": "/previews/verso/thumb.webp"
+      "thumbnail": "/previews/verso/thumb.webp",
+      "thumbnailSmall": "/previews/verso/thumb-320.webp"
     },
     {
       "id": "vitrine",
@@ -5629,6 +5709,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "artists"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -5787,7 +5868,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/vitrine/",
-      "thumbnail": "/previews/vitrine/thumb.webp"
+      "thumbnail": "/previews/vitrine/thumb.webp",
+      "thumbnailSmall": "/previews/vitrine/thumb-320.webp"
     },
     {
       "id": "workbench",
@@ -5798,6 +5880,7 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
       "categories": [
         "developers"
       ],
+      "audience": [],
       "author": {
         "name": "InkDrafts",
         "url": "https://inkdrafts.com"
@@ -5939,7 +6022,8 @@ export const THEME_CATALOG_DATA: ThemeCatalogData = {
         }
       ],
       "preview": "/previews/workbench/",
-      "thumbnail": "/previews/workbench/thumb.webp"
+      "thumbnail": "/previews/workbench/thumb.webp",
+      "thumbnailSmall": "/previews/workbench/thumb-320.webp"
     }
   ]
 };

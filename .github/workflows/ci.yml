@@ -60,7 +60,7 @@ jobs:
         if: steps.template.outcome == 'success'
         run: |
           template/scripts/export-previews --out "$RUNNER_TEMP/previews" --base /previews
-          diff -r --exclude=thumb.webp --exclude=index.json "$RUNNER_TEMP/previews" public/previews
+          diff -r --exclude='thumb*.webp' --exclude=index.json "$RUNNER_TEMP/previews" public/previews
       - name: Theme audit
         if: steps.template.outcome == 'success'
         run: bun run themes:audit --all --template template
