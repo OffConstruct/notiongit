@@ -31,6 +31,7 @@ test.skipIf(!token || !root)('development workspace duplicate resolves into dist
   expect(resolution.templateSchemaVersion).toBe(1);
   expect(resolution.pagesSchema.propertyTypes['Status']).toBe('select');
   expect(resolution.pagesSchema.optionNames.Status).toContain('Published');
-  expect(resolution.postsSchema.propertyTypes['Publish Date']).toBe('date');
+  // v1 copies call the date column "Publish Date", v2 copies "Date".
+  expect(resolution.postsSchema.propertyTypes['Publish Date'] ?? resolution.postsSchema.propertyTypes['Date']).toBe('date');
   expect(resolution.postsSchema.propertyTypes['Tags']).toBe('multi_select');
 });

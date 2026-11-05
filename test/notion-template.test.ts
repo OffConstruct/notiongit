@@ -291,6 +291,7 @@ describe('Notion template resolution', () => {
     expect(templateErrorCode(error)).toBe('notion_template_schema_invalid');
     expect((error as NotionTemplateError).details).toMatchObject({
       validation: { pages: { valid: false, issues: [{ code: 'missing_property', property: 'Nav Order' }] } },
+      remediation: 'In your Pages list, the column Nav Order is missing. Add it back, or undo the change that removed it. Then connect Notion again.',
     });
   });
 
@@ -713,3 +714,135 @@ describe('Notion template resolution record', () => {
   });
 });
 
+
+// The v2 template renames jargon columns (Slug → Web address, Nav Order →
+// Menu order, …) and uses friendly Type labels. Copies of either template
+// must resolve and validate, because existing owners keep their v1 copy.
+function v2PagesProperties(): Record<string, unknown> {
+  return {
+    Title: { type: 'title' },
+    Type: {
+      type: 'select',
+      select: { options: [{ name: 'Home page' }, { name: 'Regular page' }, { name: 'List of posts' }] },
+    },
+    Status: { type: 'select', select: { options: [{ name: 'Draft' }, { name: 'Published' }] } },
+    'Show in menu': { type: 'checkbox' },
+    'Menu order': { type: 'number' },
+    Name: { type: 'rich_text' },
+    Tagline: { type: 'rich_text' },
+    Photo: { type: 'files' },
+    Links: { type: 'rich_text' },
+    Summary: { type: 'rich_text' },
+    'Web address': { type: 'rich_text' },
+  };
+}
+
+function v2PostsProperties(): Record<string, unknown> {
+  return {
+    Title: { type: 'title' },
+    Status: { type: 'select', select: { options: [{ name: 'Draft' }, { name: 'Published' }] } },
+    Date: { type: 'date' },
+    Tags: { type: 'multi_select', multi_select: { options: [{ name: 'hello' }] } },
+    Summary: { type: 'rich_text' },
+    'Cover image': { type: 'files' },
+    Featured: { type: 'checkbox' },
+    'Web address': { type: 'rich_text' },
+    'Originally published at': { type: 'url' },
+  };
+}
+
+function schemaOf(databaseId: string, properties: Record<string, unknown>) {
+  const propertyTypes: Record<string, string> = {};
+  const optionNames: Record<string, string[]> = {};
+  for (const [name, property] of Object.entries(properties) as Array<[string, { type: string; select?: { options: Array<{ name: string }> }; multi_select?: { options: Array<{ name: string }> } }]>) {
+    propertyTypes[name] = property.type;
+    const options = property.select?.options ?? property.multi_select?.options;
+    if (options) optionNames[name] = options.map((option) => option.name);
+  }
+  return { databaseId, propertyTypes, optionNames };
+}
+
+describe('Notion template v2 copies', () => {
+  test('a v2 copy with plain column names resolves by schema and validates', async () => {
+    const fake = new NotionFake();
+    fake.children(ROOT_DASHED, [childrenList([block(POSTS_DB, 'child_database'), block(PAGES_DB, 'child_database')])]);
+    fake.database(PAGES_DB, [databaseResponse(PAGES_DB, v2PagesProperties(), PAGES_DB_URL)]);
+    fake.database(POSTS_DB, [databaseResponse(POSTS_DB, v2PostsProperties(), POSTS_DB_URL)]);
+    fake.page(ROOT_DASHED, [pageResponse(ROOT_DASHED, ROOT_PAGE_URL)]);
+
+    const resolution = await resolveNotionTemplateDatabases(TOKEN, ROOT_DASHED, { fetcher: fake.fetcher, sleep: noSleep() });
+
+    expect(resolution.pagesDatabaseId).toBe(PAGES_DB);
+    expect(resolution.postsDatabaseId).toBe(POSTS_DB);
+    expect(validateNotionTemplateSchemas(resolution).valid).toBe(true);
+  });
+
+  test('a Type select may mix v1 ids and v2 labels', () => {
+    const pages = v2PagesProperties();
+    (pages.Type as { select: { options: Array<{ name: string }> } }).select.options = [
+      { name: 'home' }, { name: 'List of posts' }, { name: 'blog' }, { name: 'Regular page' },
+    ];
+    const validation = validateNotionTemplateSchemas({
+      pagesSchema: schemaOf(PAGES_DB, pages),
+      postsSchema: schemaOf(POSTS_DB, v2PostsProperties()),
+    });
+    expect(validation.valid).toBe(true);
+  });
+
+  test('a Type select missing a kind fails, and says which choices to add in the copy\'s own words', () => {
+    const pages = v2PagesProperties();
+    (pages.Type as { select: { options: Array<{ name: string }> } }).select.options = [{ name: 'Home page' }, { name: 'Gallery' }];
+    const validation = validateNotionTemplateSchemas({
+      pagesSchema: schemaOf(PAGES_DB, pages),
+      postsSchema: schemaOf(POSTS_DB, v2PostsProperties()),
+    });
+    expect(validation.pages.issues).toEqual([
+      { code: 'unsupported_option', property: 'Type', requiredOptions: ['blog-list', 'markdown'], unsupportedOptions: ['Gallery'] },
+    ]);
+    expect(validation.pages.remediation).toBe(
+      'In your Pages list, the column Type needs these choices: Home page, List of posts and Regular page. Remove the others (Gallery). Then connect Notion again.',
+    );
+  });
+
+  test('Profile Picture may be text (v1) or Files & media (v2), but not a URL column', () => {
+    const asFiles = validateNotionTemplateSchemas({
+      pagesSchema: schemaOf(PAGES_DB, { ...pagesProperties(), 'Profile Picture': { type: 'files' } }),
+      postsSchema: schemaOf(POSTS_DB, postsProperties()),
+    });
+    expect(asFiles.valid).toBe(true);
+
+    const asText = validateNotionTemplateSchemas({
+      pagesSchema: schemaOf(PAGES_DB, { ...pagesProperties(), 'Profile Picture': { type: 'rich_text' } }),
+      postsSchema: schemaOf(POSTS_DB, postsProperties()),
+    });
+    expect(asText.valid).toBe(true);
+
+    const asUrl = validateNotionTemplateSchemas({
+      pagesSchema: schemaOf(PAGES_DB, { ...v2PagesProperties(), Photo: { type: 'url' } }),
+      postsSchema: schemaOf(POSTS_DB, v2PostsProperties()),
+    });
+    expect(asUrl.pages.issues).toEqual([
+      { code: 'wrong_property_type', property: 'Profile Picture', expectedTypes: ['rich_text', 'files'], actualType: 'url' },
+    ]);
+    expect(asUrl.pages.remediation).toContain('the column Photo has been changed to a different kind of column. Change it back to Files & media');
+  });
+
+  test('a missing column is named the way the owner\'s copy names it', () => {
+    const v2Pages = v2PagesProperties();
+    delete v2Pages['Menu order'];
+    const v2 = validateNotionTemplateSchemas({
+      pagesSchema: schemaOf(PAGES_DB, v2Pages),
+      postsSchema: schemaOf(POSTS_DB, v2PostsProperties()),
+    });
+    expect(v2.pages.remediation).toBe('In your Pages list, the column Menu order is missing. Add it back, or undo the change that removed it. Then connect Notion again.');
+
+    const v1Pages = pagesProperties();
+    delete v1Pages['Nav Order'];
+    const v1 = validateNotionTemplateSchemas({
+      pagesSchema: schemaOf(PAGES_DB, v1Pages),
+      postsSchema: schemaOf(POSTS_DB, postsProperties()),
+    });
+    expect(v1.pages.remediation).toContain('the column Nav Order is missing');
+    for (const text of [v1.pages.remediation, v2.pages.remediation]) expect(text).not.toMatch(/propert/iu);
+  });
+});

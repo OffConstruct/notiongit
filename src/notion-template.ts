@@ -24,8 +24,9 @@
 
 import { NOTION_API_VERSION } from './notion-oauth';
 
-/** Bumped with the template build sheet when a required property changes. */
-export const NOTION_TEMPLATE_SCHEMA_VERSION = 1;
+import { NOTION_TEMPLATE_SCHEMA_VERSION } from './notion-words';
+
+export { NOTION_TEMPLATE_SCHEMA_VERSION };
 
 export const PAGES_FINGERPRINT = {
   role: 'pages',
@@ -55,25 +56,34 @@ export const POSTS_FINGERPRINT = {
  * documented fallback when they are absent. An optional field is still
  * checked when present: a wrong Notion type would otherwise become a silent
  * no-op in the first scheduled sync.
+ *
+ * Each `names` list starts with the v1 template's column name; later entries
+ * are aliases, including the plain names the v2 template uses (Web address,
+ * Menu order, Show in menu, Date, Summary, Photo, Links, Cover image,
+ * Originally published at). notiongit-sync's PAGE_COLUMNS / POST_COLUMNS
+ * hold the same lists; change both together.
  */
 export const PAGES_SCHEMA_CONTRACT = {
   required: {
-    Slug: { names: ['Slug', 'slug'], types: ['rich_text'] },
+    Slug: { names: ['Slug', 'slug', 'Web address', 'Web Address'], types: ['rich_text'] },
     Type: {
       names: ['Type', 'type'],
       types: ['select'],
-      options: ['home', 'blog-list', 'blog', 'markdown'],
+      // One of each kind must exist; the v2 labels count as their v1 ids
+      // (see TYPE_OPTION_ALIASES), so either option set validates.
+      options: ['home', 'blog-list', 'markdown'],
       allowedOptions: ['home', 'blog-list', 'blog', 'markdown'],
     },
-    'Nav Order': { names: ['Nav Order', 'Nav order', 'Order'], types: ['number'] },
-    'Show in Nav': { names: ['Show in Nav', 'Show In Nav', 'Nav'], types: ['checkbox'] },
+    'Nav Order': { names: ['Nav Order', 'Nav order', 'Order', 'Menu order', 'Menu Order'], types: ['number'] },
+    'Show in Nav': { names: ['Show in Nav', 'Show In Nav', 'Nav', 'Show in menu', 'Show in Menu'], types: ['checkbox'] },
     Status: { names: ['Status'], types: ['select'], options: ['Published'], allowedOptions: ['Draft', 'Published'] },
   },
   optional: {
     Title: { names: ['Title', 'title', 'Name'], types: ['title', 'rich_text'] },
     Description: { names: ['Description', 'Excerpt', 'Summary'], types: ['rich_text'] },
     Name: { names: ['Name', 'Display Name', 'Author Name'], types: ['rich_text'] },
-    'Profile Picture': { names: ['Profile Picture', 'Avatar', 'Photo'], types: ['rich_text'] },
+    // Text (a link) in v1; Files & media in v2, which the sync copies into the site.
+    'Profile Picture': { names: ['Profile Picture', 'Avatar', 'Photo'], types: ['rich_text', 'files'] },
     Tagline: { names: ['Tagline', 'Short Bio', 'Subtitle'], types: ['rich_text'] },
     'Social Links': { names: ['Social Links', 'Socials', 'Links'], types: ['rich_text'] },
   },
@@ -81,7 +91,7 @@ export const PAGES_SCHEMA_CONTRACT = {
 
 export const POSTS_SCHEMA_CONTRACT = {
   required: {
-    Slug: { names: ['Slug', 'slug'], types: ['rich_text'] },
+    Slug: { names: ['Slug', 'slug', 'Web address', 'Web Address'], types: ['rich_text'] },
     'Publish Date': { names: ['Publish Date', 'Date', 'Published'], types: ['date'] },
     Tags: { names: ['Tags'], types: ['multi_select'] },
     Status: { names: ['Status'], types: ['select'], options: ['Published'], allowedOptions: ['Draft', 'Published'] },
@@ -89,11 +99,25 @@ export const POSTS_SCHEMA_CONTRACT = {
   optional: {
     Title: { names: ['Title', 'title', 'Name'], types: ['title', 'rich_text'] },
     Description: { names: ['Description', 'Excerpt', 'Summary'], types: ['rich_text'] },
-    'Cover Image': { names: ['Cover Image'], types: ['files'] },
-    'Canonical URL': { names: ['Canonical URL'], types: ['url'] },
+    'Cover Image': { names: ['Cover Image', 'Cover image', 'Cover'], types: ['files'] },
+    'Canonical URL': { names: ['Canonical URL', 'Originally published at'], types: ['url'] },
     Featured: { names: ['Featured'], types: ['checkbox'] },
   },
 } as const;
+
+/** The v2 template's friendly Type labels, and the v1 ids they mean. */
+const TYPE_OPTION_ALIASES: Readonly<Record<string, string>> = {
+  'home page': 'home',
+  'list of posts': 'blog-list',
+  'regular page': 'markdown',
+};
+
+/** The label each Type kind has in the v2 template, for messages owners read. */
+const TYPE_OPTION_LABELS: Readonly<Record<string, string>> = {
+  home: 'Home page',
+  'blog-list': 'List of posts',
+  markdown: 'Regular page',
+};
 
 const FINGERPRINTS = [PAGES_FINGERPRINT, POSTS_FINGERPRINT] as const;
 
@@ -159,6 +183,7 @@ export interface NotionTemplateResolution {
 
 export type NotionTemplateErrorCode =
   | 'notion_template_not_duplicated'
+  | 'notion_reconnect_page_unshared'
   | 'notion_template_root_invalid'
   | 'notion_template_root_unavailable'
   | 'notion_template_root_unshared'
@@ -483,9 +508,86 @@ function findSchemaProperty(
 }
 
 function normalizedOption(role: TemplateDatabaseRole, property: string, option: string): string {
-  // The sync engine deliberately accepts page Type values case-insensitively;
-  // Status is sent to Notion as an exact query value and remains case-sensitive.
-  return role === 'pages' && property === 'Type' ? option.toLowerCase() : option;
+  // The sync engine deliberately accepts page Type values case-insensitively
+  // and maps the v2 labels to the v1 ids; Status is sent to Notion as an
+  // exact query value and remains case-sensitive.
+  if (role !== 'pages' || property !== 'Type') return option;
+  const lower = option.trim().toLowerCase();
+  return TYPE_OPTION_ALIASES[lower] ?? lower;
+}
+
+/** Plain v2 column names, used in messages when an owner's copy is a v2 copy. */
+const V2_COLUMN_NAMES: Readonly<Record<string, string>> = {
+  Slug: 'Web address',
+  'Nav Order': 'Menu order',
+  'Show in Nav': 'Show in menu',
+  'Publish Date': 'Date',
+  Description: 'Summary',
+  'Profile Picture': 'Photo',
+  'Social Links': 'Links',
+  'Cover Image': 'Cover image',
+  'Canonical URL': 'Originally published at',
+};
+
+/** Whether a copy was made from the v2 template: it has a v2-only column or Type label. */
+function isV2Copy(summary: NotionDatabaseSchemaSummary): boolean {
+  const v2Only = ['Web address', 'Menu order', 'Show in menu', 'Cover image', 'Originally published at'];
+  if (v2Only.some((name) => name in summary.propertyTypes)) return true;
+  return Object.values(summary.optionNames).some((options) =>
+    options.some((option) => option.trim().toLowerCase() in TYPE_OPTION_ALIASES));
+}
+
+/**
+ * The column name an owner sees for a contract property: the one their copy
+ * actually uses when it has one, otherwise the name their template version
+ * gave it.
+ */
+function ownerColumnName(summary: NotionDatabaseSchemaSummary, property: string, contract: SchemaPropertyContract): string {
+  const present = findSchemaProperty(summary, contract);
+  if (present) return present.name;
+  return isV2Copy(summary) ? V2_COLUMN_NAMES[property] ?? property : property;
+}
+
+function plainList(items: readonly string[]): string {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+/** One sentence per problem, in the words an owner sees in Notion ("column", never "property"). */
+function remediationFor(
+  role: TemplateDatabaseRole,
+  summary: NotionDatabaseSchemaSummary,
+  issues: readonly NotionSchemaValidationIssue[],
+  contract: {
+    required: Readonly<Record<string, SchemaPropertyContract>>;
+    optional: Readonly<Record<string, SchemaPropertyContract>>;
+  },
+): string {
+  const list = role === 'pages' ? 'Pages' : 'Posts';
+  const usesV2Labels = isV2Copy(summary);
+  const sentences = issues.map((issue) => {
+    const requirement = contract.required[issue.property] ?? contract.optional[issue.property];
+    const column = requirement ? ownerColumnName(summary, issue.property, requirement) : issue.property;
+    switch (issue.code) {
+      case 'missing_property':
+        return `In your ${list} list, the column ${column} is missing. Add it back, or undo the change that removed it.`;
+      case 'wrong_property_type':
+        return `In your ${list} list, the column ${column} has been changed to a different kind of column. Change it back${issue.expectedTypes?.includes('files') ? ' to Files & media' : ''}, or undo that change.`;
+      case 'unsupported_option': {
+        if (role === 'pages' && issue.property === 'Type') {
+          const wanted = (contract.required.Type?.options ?? []).map((id) => (usesV2Labels ? TYPE_OPTION_LABELS[id] ?? id : id));
+          return `In your ${list} list, the column ${column} needs these choices: ${plainList(wanted)}${issue.unsupportedOptions?.length ? `. Remove the others (${plainList(issue.unsupportedOptions)})` : ''}.`;
+        }
+        if (issue.requiredOptions?.length) {
+          return `In your ${list} list, the column ${column} needs the choice ${plainList(issue.requiredOptions)}.`;
+        }
+        return `In your ${list} list, the column ${column} has choices your site cannot use: ${plainList(issue.unsupportedOptions ?? [])}. Remove them.`;
+      }
+    }
+  });
+  return sentences.length > 0
+    ? `${sentences.join(' ')} Then connect Notion again.`
+    : `Your ${list} list is set up correctly.`;
 }
 
 function validateDatabaseSchema(
@@ -548,10 +650,7 @@ function validateDatabaseSchema(
     database: role,
     valid: issues.length === 0,
     issues,
-    remediation:
-      role === 'pages'
-        ? 'Open the Pages database in Notion and restore the listed fields and select values, or change each field to the expected type.'
-        : 'Open the Posts database in Notion and restore the listed fields and select values, or change each field to the expected type.',
+    remediation: remediationFor(role, summary, issues, contract),
   };
 }
 
@@ -756,7 +855,10 @@ export async function resolveNotionTemplateDatabases(
       if (!validation.valid) {
         throw new NotionTemplateError('notion_template_schema_invalid', 422, {
           validation,
-          remediation: 'Update the matching database schemas in Notion, then reconnect Notion so InkDrafts can validate them again.',
+          remediation: [validation.pages, validation.posts]
+            .filter((database) => !database.valid)
+            .map((database) => database.remediation)
+            .join(' '),
         });
       }
       return resolution;
