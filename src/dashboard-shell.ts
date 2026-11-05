@@ -98,18 +98,6 @@ export interface NotionPageLinks {
   readonly pagesUrl: string | null;
 }
 
-/** Only links that point at Notion are rendered, whatever stored them. */
-export function isNotionUrl(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length > 500) return false;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' &&
-      (url.hostname === 'notion.so' || url.hostname === 'www.notion.so' || url.hostname.endsWith('.notion.site'));
-  } catch {
-    return false;
-  }
-}
-
 /**
  * "Write in Notion": the shared card on the status page and the setup
  * success page. Links that were not captured fall back to opening Notion

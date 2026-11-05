@@ -4,7 +4,8 @@
  * repository name) is escaped, and everything else comes from the catalog.
  */
 
-import { renderAppearanceBlock, type CatalogTheme, type SiteAppearance } from './theme-catalog';
+import { renderInkdraftsBlock } from './repository-config';
+import type { CatalogTheme, SiteAppearance } from './theme-catalog';
 import {
   customizerDataHtml,
   escapeHtml,
@@ -38,6 +39,8 @@ export type AppearancePageModel =
   | {
       kind: 'editor';
       site: AppearanceSite;
+      /** Carried into the hand-edit block so pasting it keeps the link. */
+      notionPage: string | null;
       /** Catalog themes whose manifest the repository has, in catalog order. */
       offered: readonly CatalogTheme[];
       current: SiteAppearance;
@@ -145,7 +148,7 @@ ${customizerDataHtml(theme)}
 <details>
 <summary>Advanced: edit the settings file by hand</summary>
 <p>Saving changes one part of your site’s settings file (the <code>inkdrafts:</code> block of <code>_config.yml</code>). Nothing else in the file changes. To make the same change by hand, replace that block with:</p>
-${yamlBlockHtml(renderAppearanceBlock(model.selected))}
+${yamlBlockHtml(renderInkdraftsBlock(model.selected, model.notionPage))}
 <p><a href="${escapeHtml(editUrl(model.site))}">Open _config.yml on GitHub</a></p>
 </details>
 <details id="all-designs" open>

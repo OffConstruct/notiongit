@@ -1048,9 +1048,10 @@ describe('J3 queue pipeline journey', () => {
     const ttls = journey.kv.ttlLog(jobKey);
     expect(ttls.length).toBeGreaterThanOrEqual(7);
     expect(ttls.every((ttl) => ttl === PROVISIONING_JOB_TTL_SECONDS)).toBe(true);
-    // The one designed deletion: the throttle's account lease is released
-    // when the job succeeds. No token-hygiene record is ever deleted.
-    expect(journey.kv.deletes).toEqual(['github:account-lease:42']);
+    // The designed deletions: the dashboard forgets its cached site facts
+    // after patch_config, and the throttle's account lease is released when
+    // the job succeeds. No token-hygiene record is ever deleted.
+    expect(journey.kv.deletes).toEqual(['status:site-facts:1001', 'github:account-lease:42']);
   });
 });
 
@@ -1479,7 +1480,8 @@ describe('J7 status sign-in and re-run journey', () => {
     expect(burstKeys).toHaveLength(1);
     expect(journey.kv.writes.map((write) => write.key)).toEqual([burstKeys[0], 'github:rate:global', statusRerunKey(42)]);
     expect(journey.kv.ttlLog(statusRerunKey(42))).toEqual([STATUS_RERUN_WINDOW_SECONDS]);
-    expect(journey.kv.deletes).toEqual([]);
+    // The dispatch makes the next dashboard view read GitHub afresh.
+    expect(journey.kv.deletes).toEqual(['status:site-facts:1001']);
     expect(journey.queue.sent).toEqual([]);
   });
 });

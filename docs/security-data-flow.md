@@ -70,7 +70,7 @@ cleared cookie is the replay defense), exchanges the code, proves identity and
 the user's installation of the App fresh from GitHub, sets the
 `__Host-status-session` cookie — identity fields only, signed with the client
 secret — and redirects to `/status`. The user token and code die inside that
-request; the status read path performs zero KV writes. `POST /status/rerun`
+request; the status read path writes only the per-site facts cache in §3. `POST /status/rerun`
 requires the session cookie, an Origin match, a signed form token, and the
 shared admission/budget gates, then dispatches the site's own sync workflow
 (`allow_bulk_delete: 'false'` hardcoded) after consuming the per-account
@@ -79,9 +79,10 @@ and marker edits self-heal on the next render.
 
 ## 3. Retained state
 
-Every KV record the Worker writes, with every field. The only delete call in
-`src/` is the throttle's designed release of the account lease when a job
-reaches a terminal status (below); everything else is removal by TTL.
+Every KV record the Worker writes, with every field. The delete calls in
+`src/` are the throttle's designed release of the account lease when a job
+reaches a terminal status, and the status facts cache being forgotten after
+the owner's own change (both below); everything else is removal by TTL.
 
 | Key pattern | Record and fields | TTL | Written when |
 | --- | --- | --- | --- |
@@ -98,6 +99,7 @@ reaches a terminal status (below); everything else is removal by TTL.
 | `provisioning:admission:denial:{accountId}` | Account id, denial reason, and timestamps | `PROVISIONING_DENIED_IDENTITY_COOLDOWN_SECONDS` | Temporary hold after a suspended or provider-denied identity |
 | `provisioning:admission:audit:{jobId}:{stage}:{reason}` | Job id, optional account id or request digest, stage, decision, reason, and timestamps | `PROVISIONING_ADMISSION_AUDIT_TTL_SECONDS` | One deduplicated operator audit per job, stage, and reason. `status_rerun` and `status_appearance` rows are the exception: no durable job id exists on those legs, so they key on a per-request random label and are never deduplicated |
 | `status:rerun:{accountId}` | Rerun window: `version` (1), `windowStartedAt`, `lastRerunAt`, `count` | Remaining window seconds, 24h max | Manual sync re-run on the status page; written before the dispatch so a crash overcounts. Numeric account id only |
+| `status:site-facts:{repositoryId}` | `v` (1), `notionConnected` (whether the `NOTION_TOKEN` secret exists, never its value), `themeName`, `notionPage` (the public page URL from `_config.yml`) | 300s; deleted after an appearance save, a manual update, or a provisioning `patch_config` | A status render that read all three facts from GitHub |
 
 The worker sets three browser cookies in total; none of them is retained
 server-side. The first is pre-existing (listed for completeness); the status
@@ -108,6 +110,12 @@ surface adds the other two.
 | `__Host-notion-oauth-state` | State nonce | 600s, cleared at the callback | Notion OAuth CSRF (see §2) |
 | `__Host-status-state` | Status authorize-leg nonce | 600s, cleared at the callback | Double-submit CSRF and replay defense; the signed state rides the redirect URL |
 | `__Host-status-session` | HMAC-signed `{v, k, accountId, login, installationId, exp}` | 28800s (8h) | Status sign-in; carries no secret — the signing key stays server-side |
+
+Provisioning also writes the owner's Notion page URL (the root page Notion
+returned at consent, never a database id or token) to the site's public
+`_config.yml` as `inkdrafts.notion_page`, so a dashboard signed in on any
+device can link to it. Opening it still needs the owner's Notion login. Every
+read re-checks it is an https Notion link (`src/notion-url.ts`).
 
 Queue payloads are exactly `{ jobId }` — the record in KV is the sole source
 of truth, so a message carries nothing else.

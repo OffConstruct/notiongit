@@ -7,6 +7,7 @@
  * and the column-zero `inkdrafts:` appearance block.
  */
 
+import { isNotionUrl } from './notion-url';
 import type { RepositoryDestination } from './repository-naming';
 import {
   findAppearanceBlocks,
@@ -257,28 +258,76 @@ const APPEARANCE_BLOCK_COMMENT = [
   '# Quote text values when editing by hand, as in mode: "dark".',
 ];
 
+/** The `inkdrafts:` key holding the owner's Notion page, so a dashboard
+ * signed in on any device can link to it. A page URL only: the database ids
+ * stay Actions secrets, and the page itself needs a Notion login to open. */
+export const NOTION_PAGE_KEY = 'notion_page';
+const NOTION_PAGE_LINE = /^\s+notion_page\s*:(.*)$/u;
+const NOTION_PAGE_COMMENT = '# Your page in Notion, for the dashboard link';
+
+function notionPageLine(url: string): string {
+  return `  ${NOTION_PAGE_KEY}: ${JSON.stringify(url)} ${NOTION_PAGE_COMMENT}`;
+}
+
+/** The validated `notion_page` of the `inkdrafts:` block; null when absent,
+ * ambiguous, or not a Notion link (the file is public and hand-editable). */
+export function readNotionPage(content: string): string | null {
+  const lines = content.split(/\r\n|\n|\r/u);
+  const blocks = findAppearanceBlocks(lines);
+  if (blocks.length !== 1) return null;
+  for (const line of lines.slice(blocks[0].start + 1, blocks[0].end)) {
+    const match = NOTION_PAGE_LINE.exec(line);
+    if (match) {
+      const value = scalarValue(match[1]);
+      return isNotionUrl(value) ? value : null;
+    }
+  }
+  return null;
+}
+
+/** The canonical block the appearance screen shows for a hand edit. */
+export function renderInkdraftsBlock(appearance: SiteAppearance, notionPage: string | null, newline = '\n'): string {
+  const block = renderAppearanceBlock(appearance, newline);
+  return notionPage === null ? block : `${block}${newline}${notionPageLine(notionPage)}`;
+}
+
+interface InkdraftsBlockPatch {
+  appearance?: SiteAppearance;
+  notionPage?: string;
+}
+
 /**
- * Replace the column-zero `inkdrafts:` block with the canonical rendering of
- * `appearance`, or add it after the `author:` block (or at the end) when the
- * file has none. Only lines owned by that block change. Two blocks are
- * ambiguous and refused rather than guessed at.
+ * Rewrite the column-zero `inkdrafts:` block, or add it after the `author:`
+ * block (or at the end) when the file has none. An appearance replaces the
+ * theme lines; the `notion_page` line rides along unless a new page is given,
+ * so an appearance save never drops it. Only lines owned by that block
+ * change. Two blocks are ambiguous and refused rather than guessed at.
  */
-export function patchAppearanceBlock(content: string, appearance: SiteAppearance): PatchedConfig {
+function patchInkdraftsBlock(content: string, patch: InkdraftsBlockPatch): PatchedConfig {
   const pieces = content.split(/(\r\n|\n|\r)/u);
   const lines = pieces.filter((_, index) => index % 2 === 0);
   const newline = pieces[1] ?? '\n';
-  const rendered = renderAppearanceBlock(appearance, newline);
   const blocks = findAppearanceBlocks(lines);
   if (blocks.length > 1) throw new GithubConfigError('github_config_invalid', 502);
+  const notionLine = patch.notionPage === undefined ? null : notionPageLine(patch.notionPage);
 
   if (blocks.length === 1) {
     const { start, end } = blocks[0];
+    const owned = lines.slice(start, end);
+    const keptNotion = owned.find((line) => NOTION_PAGE_LINE.test(line)) ?? null;
+    const rest = owned.filter((line) => !NOTION_PAGE_LINE.test(line));
+    const head = patch.appearance ? renderAppearanceBlock(patch.appearance, newline) : rest.join(newline);
+    const notion = notionLine ?? keptNotion;
+    const rendered = notion === null ? head : `${head}${newline}${notion}`;
     const current = pieces.slice(start * 2, end * 2 - 1).join('');
     if (current === rendered) return { content, changed: false };
     pieces.splice(start * 2, end * 2 - 1 - start * 2, rendered);
     return { content: pieces.join(''), changed: true };
   }
 
+  if (!patch.appearance && notionLine === null) return { content, changed: false };
+  const body = patch.appearance ? renderAppearanceBlock(patch.appearance, newline) : 'inkdrafts:';
+  const rendered = notionLine === null ? body : `${body}${newline}${notionLine}`;
   const inserted = [...APPEARANCE_BLOCK_COMMENT, rendered].join(newline);
   const author = lines.findIndex((line) => /^author\s*:/u.test(line));
   if (author === -1) {
@@ -294,19 +343,27 @@ export function patchAppearanceBlock(content: string, appearance: SiteAppearance
   return { content: pieces.join(''), changed: true };
 }
 
+/** The appearance half of `patchInkdraftsBlock`, for the save's no-op check. */
+export function patchAppearanceBlock(content: string, appearance: SiteAppearance): PatchedConfig {
+  return patchInkdraftsBlock(content, { appearance });
+}
+
 export interface SiteConfigPatch {
   /** Rewrite the deployment-owned url/baseurl lines. */
   destination?: Pick<RepositoryDestination, 'url' | 'baseurl'>;
-  /** Rewrite the `inkdrafts:` block. */
+  /** Rewrite the `inkdrafts:` block's theme lines. */
   appearance?: SiteAppearance;
+  /** Set the block's `notion_page`; ignored unless it is a Notion link. */
+  notionPage?: string | null;
 }
 
 function patchSiteConfigContent(content: string, patch: SiteConfigPatch): PatchedConfig {
   let result: PatchedConfig = { content, changed: false };
   if (patch.destination) result = patchConfigContent(result.content, patch.destination);
-  if (patch.appearance) {
-    const appearance = patchAppearanceBlock(result.content, patch.appearance);
-    result = { content: appearance.content, changed: result.changed || appearance.changed };
+  const notionPage = isNotionUrl(patch.notionPage) ? patch.notionPage : undefined;
+  if (patch.appearance || notionPage !== undefined) {
+    const block = patchInkdraftsBlock(result.content, { appearance: patch.appearance, notionPage });
+    result = { content: block.content, changed: result.changed || block.changed };
   }
   return result;
 }

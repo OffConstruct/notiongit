@@ -40,10 +40,12 @@ import {
 } from './provisioning-throttle';
 import { hasNotionTokenSecret } from './actions-secrets';
 import { GithubPagesError, requestPagesBuild } from './github-pages';
-import { readRepositoryConfig } from './repository-config';
+import { readNotionPage, readRepositoryConfig } from './repository-config';
+import { forgetSiteFacts, readSiteFacts, rememberSiteFacts, type SiteFacts } from './status-cache';
 import { findTheme, parseAppearanceParams, readAppearanceBlock, tweakQuery } from './theme-catalog';
 import { isSameOriginPost, pageHeaders } from './http-headers';
-import { isNotionUrl, type NotionPageLinks } from './dashboard-shell';
+import type { NotionPageLinks } from './dashboard-shell';
+import { isNotionUrl } from './notion-url';
 import { createProvisioningJob, saveProvisioningJob } from './provisioning-job';
 import { progressPageUrl } from './progress';
 import { emitProvisioningEvent } from './observability';
@@ -294,6 +296,8 @@ export type SiteDiscovery =
       /** Best-effort reads: null (or absent) when GitHub did not say. */
       notionConnected?: boolean | null;
       themeName?: string | null;
+      /** `inkdrafts.notion_page` from `_config.yml`, validated. */
+      notionPage?: string | null;
       automaticUpdatesResumed?: boolean;
     }
   | {
@@ -311,7 +315,8 @@ export interface SiteStatus {
   /** True while a sync run is freshly in flight; the session page then offers
    * a manual refresh instead of reloading itself. */
   runInFlight: boolean;
-  /** The owner's Notion page links, from this browser's setup cookie. */
+  /** The owner's Notion page links: the page from `_config.yml`, plus the
+   * list links this browser's setup cookie holds for the same page. */
   notion?: NotionPageLinks | null;
   /** Whether the repository holds a Notion token; null when unknown. */
   notionConnected?: boolean | null;
@@ -539,12 +544,20 @@ export function projectSiteStatus(
       deploy: deployOutcomeOf(discovery.build),
       runInFlight: syncRunning && !runStuck,
       ...(discovery.summary !== null && !discovery.summary.ok ? { summaryFallback: discovery.summary.reason } : {}),
-      notion,
+      notion: notionLinksOf(notion, discovery.notionPage ?? null),
       notionConnected: discovery.notionConnected ?? null,
       themeName: discovery.themeName ?? null,
       automaticUpdatesResumed: discovery.automaticUpdatesResumed === true,
     },
   };
+}
+
+/** The config's page wins over a cookie from an earlier setup: after a
+ * reconnect to another page, the cookie's list links belong to the old one. */
+function notionLinksOf(cookie: NotionPageLinks | null, page: string | null): NotionPageLinks | null {
+  if (page === null) return cookie;
+  if (cookie !== null && (cookie.homeUrl === page || cookie.homeUrl === null)) return { ...cookie, homeUrl: page };
+  return { homeUrl: page, postsUrl: null, pagesUrl: null };
 }
 
 /** True when a run of the sync workflow is in flight and young enough that
@@ -579,6 +592,7 @@ export async function discoverSite(
   appAuth: GithubAppAuthEnv,
   session: StatusSession,
   fetcher: typeof fetch = fetch,
+  cache: KVNamespace | null = null,
 ): Promise<SiteDiscovery> {
   const found = await discoverSiteRepository(appAuth, session, fetcher);
   if (!found.ok) return found;
@@ -587,11 +601,7 @@ export async function discoverSite(
   // The newest run from any trigger: a scheduled run that failed must not
   // hide behind an older green hand-triggered one.
   const token = installationToken.raw;
-  const extras = Promise.all([
-    hasNotionTokenSecret(token, repository.fullName, fetcher),
-    themeNameOf(token, repository.fullName, fetcher),
-    resumeAutomaticUpdates(token, repository.fullName, fetcher),
-  ]);
+  const extras = siteFactsOf(token, repository, fetcher, cache);
   let syncRun: NotionSyncRunIdentity | null;
   let build: GithubPagesBuildIdentity | null;
   try {
@@ -605,7 +615,6 @@ export async function discoverSite(
   const summaryText = syncRun === null || syncRun.status !== 'completed'
     ? null
     : await latestSyncRunSummary(token, repository.fullName, syncRun.runId, fetcher);
-  const [notionConnected, themeName, automaticUpdatesResumed] = await extras;
   return {
     ok: true,
     accountLogin,
@@ -613,19 +622,51 @@ export async function discoverSite(
     syncRun,
     summary: summaryText === null ? null : parseSafeSummary(summaryText),
     build,
+    ...await extras,
+  };
+}
+
+type SiteExtras = Required<Pick<Extract<SiteDiscovery, { ok: true }>, 'notionConnected' | 'themeName' | 'notionPage' | 'automaticUpdatesResumed'>>;
+
+/** The three slow-changing reads, from the per-site cache when it has them.
+ * Only a complete answer is cached, so a GitHub hiccup is retried next view. */
+async function siteFactsOf(
+  token: string,
+  repository: GeneratedRepositoryIdentity,
+  fetcher: typeof fetch,
+  cache: KVNamespace | null,
+): Promise<SiteExtras> {
+  const cached = cache === null ? null : await readSiteFacts(cache, repository.id);
+  // A hit means the workflow state was checked within the cache's lifetime.
+  if (cached !== null) return { ...cached, automaticUpdatesResumed: false };
+  const [notionConnected, config, automaticUpdatesResumed] = await Promise.all([
+    hasNotionTokenSecret(token, repository.fullName, fetcher),
+    configFactsOf(token, repository.fullName, fetcher),
+    resumeAutomaticUpdates(token, repository.fullName, fetcher),
+  ]);
+  if (cache !== null && notionConnected !== null && config !== null) {
+    await rememberSiteFacts(cache, repository.id, { notionConnected, ...config });
+  }
+  return {
     notionConnected,
-    themeName,
+    themeName: config?.themeName ?? null,
+    notionPage: config?.notionPage ?? null,
     automaticUpdatesResumed,
   };
 }
 
-async function themeNameOf(token: string, fullName: string, fetcher: typeof fetch): Promise<string | null> {
+async function configFactsOf(token: string, fullName: string, fetcher: typeof fetch): Promise<Pick<SiteFacts, 'themeName' | 'notionPage'> | null> {
+  let config: string;
   try {
-    const themeId = readAppearanceBlock(await readRepositoryConfig(token, fullName, fetcher))?.themeId;
-    return themeId ? findTheme(themeId.toLowerCase())?.name ?? null : null;
+    config = await readRepositoryConfig(token, fullName, fetcher);
   } catch {
     return null;
   }
+  const themeId = readAppearanceBlock(config)?.themeId;
+  return {
+    themeName: themeId ? findTheme(themeId.toLowerCase())?.name ?? null : null,
+    notionPage: readNotionPage(config),
+  };
 }
 
 /** GitHub switches scheduled workflows off after 60 days without repository
@@ -905,7 +946,7 @@ export async function statusHome(request: Request, env: Partial<StatusEnv>): Pro
     return statusHtml(statusPage({ kind: 'entry' }, { notice: noticeOf(url), rerunFormToken: null }));
   }
 
-  const discovery = await discoverSite({ GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY }, session);
+  const discovery = await discoverSite({ GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY }, session, fetch, env.JOBS ?? null);
   const notion = discovery.ok
     ? await readNotionLinks(request, discovery.repository.fullName, GITHUB_CLIENT_SECRET)
     : null;
@@ -1045,7 +1086,7 @@ export async function statusRerun(request: Request, env: Partial<StatusEnv>): Pr
     return statusThrottleRefusal(stage.reason, stage.retryAfterSeconds);
   }
 
-  const discovery = await discoverSite({ GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY }, session);
+  const discovery = await discoverSite({ GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY }, session, fetch, JOBS);
   if (!discovery.ok) {
     return statusHtml(statusPage(projectSiteStatus(discovery, session, Date.now()), { notice: null, rerunFormToken: null }));
   }
@@ -1118,6 +1159,7 @@ export async function statusRerun(request: Request, env: Partial<StatusEnv>): Pr
     return refusedResponse('github_app_unavailable', 502, null);
   }
 
+  await forgetSiteFacts(JOBS, repository.id);
   emitProvisioningEvent({ type: 'status_rerun_dispatched', requestLabel, ts: Date.now() });
   return redirectResponse(303, new URL(`/status?notice=${allowBulkDelete ? 'delete_confirmed' : 'sync_triggered'}`, request.url).toString());
 }

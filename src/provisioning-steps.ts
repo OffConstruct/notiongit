@@ -11,6 +11,7 @@
 
 import { patchSiteConfig, repositoryHasTheme } from './repository-config';
 import { revalidateAppearance, type SiteAppearance } from './theme-catalog';
+import { forgetSiteFacts } from './status-cache';
 import { configureGithubPages } from './github-pages';
 import { awaitGeneratedRepositoryCommit } from './repository-generation';
 import {
@@ -62,10 +63,11 @@ async function runVerifyRepository(job: ProvisioningJob, ctx: StepRunnerContext)
 }
 
 /**
- * url/baseurl plus, when a theme was chosen, the `inkdrafts:` block, in one
- * commit. The choice is re-validated against the current catalog and the
- * repository's own theme manifests; a theme the site cannot render is
- * skipped (recorded, not failed), so the site falls back to the default.
+ * url/baseurl, the owner's Notion page link and, when a theme was chosen,
+ * the `inkdrafts:` block, in one commit. The choice is re-validated against
+ * the current catalog and the repository's own theme manifests; a theme the
+ * site cannot render is skipped (recorded, not failed), so the site falls
+ * back to the default.
  */
 async function runPatchConfig(job: ProvisioningJob, ctx: StepRunnerContext): Promise<Partial<ProvisioningJobData>> {
   const fullName = job.data.generatedRepository.fullName;
@@ -80,9 +82,11 @@ async function runPatchConfig(job: ProvisioningJob, ctx: StepRunnerContext): Pro
   await patchSiteConfig(
     ctx.installationToken.raw,
     fullName,
-    { destination: job.data.repository, appearance },
+    { destination: job.data.repository, appearance, notionPage: job.data.notionLinks?.templateRootUrl ?? null },
     { fetcher: ctx.fetcher },
   );
+  // A reconnect changes what the dashboard shows (Notion connected, its page).
+  await forgetSiteFacts(ctx.jobs, job.data.generatedRepository.id);
   return job.data.appearance ? { appearanceSkipped } : {};
 }
 

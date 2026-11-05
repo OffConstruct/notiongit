@@ -15,7 +15,8 @@
  */
 
 import { appearancePage, type AppearanceError, type AppearancePageModel, type AppearanceSite } from './appearance-page';
-import { GithubConfigError, listRepositoryThemes, patchAppearanceBlock, patchSiteConfig, readRepositoryConfig } from './repository-config';
+import { GithubConfigError, listRepositoryThemes, patchAppearanceBlock, patchSiteConfig, readNotionPage, readRepositoryConfig } from './repository-config';
+import { forgetSiteFacts } from './status-cache';
 import { isSameOriginPost, pageHeaders } from './http-headers';
 import {
   admitProvisioningRequest,
@@ -162,6 +163,7 @@ type LoadedSite =
       ok: true;
       site: AppearanceSite;
       fullName: string;
+      repositoryId: number;
       installationToken: string;
       config: string;
       /** null: the repository predates themes (or has none this catalog knows). */
@@ -206,6 +208,7 @@ async function loadSite(env: Pick<StatusEnv, 'GITHUB_APP_ID' | 'GITHUB_APP_PRIVA
       siteUrl,
     },
     fullName: found.repository.fullName,
+    repositoryId: found.repository.id,
     installationToken: token,
     config,
     themes: current === null ? null : { offered, current },
@@ -254,6 +257,7 @@ function editor(
   return {
     kind: 'editor',
     site: loaded.site,
+    notionPage: readNotionPage(loaded.config),
     offered,
     current: fields.current,
     selected: fields.selected,
@@ -380,6 +384,7 @@ export async function appearanceSave(request: Request, env: Partial<StatusEnv>):
 
   try {
     const result = await patchSiteConfig(loaded.installationToken, loaded.fullName, { appearance });
+    await forgetSiteFacts(JOBS, loaded.repositoryId);
     return redirect(new URL(`/status/appearance?saved=${result.changed ? '1' : 'unchanged'}`, request.url).toString());
   } catch (error) {
     if (!(error instanceof GithubConfigError)) return githubUnavailable(null);
