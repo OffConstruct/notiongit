@@ -4,6 +4,7 @@
  * repository name) is escaped, and everything else comes from the catalog.
  */
 
+import { fontControlView } from './appearance-fonts';
 import { renderInkdraftsBlock } from './repository-config';
 import type { CatalogTheme, SiteAppearance } from './theme-catalog';
 import {
@@ -113,6 +114,7 @@ function editorBody(model: Extract<AppearancePageModel, { kind: 'editor' }>): st
     current: candidate.id === theme.id,
   })).join('\n');
   const dirty = !sameAppearance(model.selected, model.current);
+  const fonts = fontControlView(theme, model.selected);
   return `${APPEARANCE_STYLES}
 ${signedInLine(model.site)}
 <h1>Your site’s appearance</h1>
@@ -133,7 +135,7 @@ ${previewFrameHtml(theme, model.selected)}
 <input type="hidden" name="theme" value="${escapeHtml(theme.id)}">
 <fieldset>
 <legend>${escapeHtml(theme.name)} options</legend>
-${tweakFieldsHtml(theme, model.selected)}
+${tweakFieldsHtml(fonts.theme, fonts.appearance)}
 </fieldset>
 <div class="save-bar">
 <p class="unsaved" data-unsaved-cue${dirty ? '' : ' hidden'}>Unsaved changes</p>
@@ -144,7 +146,7 @@ ${tweakFieldsHtml(theme, model.selected)}
 <p class="muted">Your site updates with the new look about a minute after you save.</p>
 </form>
 </div>
-${customizerDataHtml(theme)}
+${customizerDataHtml(fonts.theme)}
 <details>
 <summary>Advanced: edit the settings file by hand</summary>
 <p>Saving changes one part of your site’s settings file (the <code>inkdrafts:</code> block of <code>_config.yml</code>). Nothing else in the file changes. To make the same change by hand, replace that block with:</p>

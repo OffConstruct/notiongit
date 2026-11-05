@@ -935,7 +935,7 @@ function queuePhaseFetch(): {
 } {
   let mints = 0;
   let syncDispatched = false;
-  const configYaml = 'title: "NotionGit"\nurl: ""\nbaseurl: ""\n';
+  const configYaml = 'title: "My website"\nurl: ""\nbaseurl: ""\n';
   const { calls, fetcher } = scriptedFetch((request) => {
     const url = new URL(request.url);
     if (url.href === 'https://api.github.com/app/installations/123/access_tokens') {

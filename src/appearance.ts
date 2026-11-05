@@ -15,6 +15,7 @@
  */
 
 import { appearancePage, type AppearanceError, type AppearancePageModel, type AppearanceSite } from './appearance-page';
+import { foldFontChoice } from './appearance-fonts';
 import { GithubConfigError, listRepositoryThemes, patchAppearanceBlock, patchSiteConfig, readNotionPage, readRepositoryConfig } from './repository-config';
 import { forgetSiteFacts } from './status-cache';
 import { isSameOriginPost, pageHeaders } from './http-headers';
@@ -221,7 +222,8 @@ function hasTweakParams(params: URLSearchParams): boolean {
 
 type Selection = { ok: true; appearance: SiteAppearance } | { ok: false; error: AppearanceError };
 
-function selectAppearance(params: URLSearchParams, offered: readonly CatalogTheme[], current: SiteAppearance): Selection {
+function selectAppearance(form: URLSearchParams, offered: readonly CatalogTheme[], current: SiteAppearance): Selection {
+  const params = foldFontChoice(form, current);
   const requested = params.get('theme');
   if (requested === null || requested === '') return { ok: true, appearance: current };
   const theme = offered.find((candidate) => candidate.id === requested);

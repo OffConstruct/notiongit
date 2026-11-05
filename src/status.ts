@@ -40,6 +40,7 @@ import {
 } from './provisioning-throttle';
 import { hasNotionTokenSecret } from './actions-secrets';
 import { GithubPagesError, requestPagesBuild } from './github-pages';
+import { foldFontChoice } from './appearance-fonts';
 import { readNotionPage, readRepositoryConfig } from './repository-config';
 import { forgetSiteFacts, readSiteFacts, rememberSiteFacts, type SiteFacts } from './status-cache';
 import { findTheme, parseAppearanceParams, readAppearanceBlock, tweakQuery } from './theme-catalog';
@@ -128,7 +129,7 @@ export interface StatusStatePayload {
 
 /** Canonical appearance query, or null for anything the catalog rejects. */
 export function canonicalAppearanceQuery(params: URLSearchParams): string | null {
-  const parsed = parseAppearanceParams(params);
+  const parsed = parseAppearanceParams(foldFontChoice(params));
   if (parsed.kind !== 'ok') return null;
   const tweaks = tweakQuery(parsed.appearance);
   return `theme=${parsed.appearance.themeId}${tweaks ? `&${tweaks}` : ''}`;
