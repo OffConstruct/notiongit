@@ -24,6 +24,8 @@ const SESSION_HOURS = String(STATUS_SESSION_TTL_SECONDS / 3600);
 const APP_ROUTES = new Set([
   '/',
   '/healthz',
+  '/connect',
+  '/themes',
   '/connect/github',
   '/connect/notion',
   '/progress',
@@ -54,7 +56,7 @@ describe('policy pages', () => {
       expect(document.match(/<h1[ >]/gu)).toHaveLength(1);
       expect(document).toContain('class="skip-link" href="#main-content"');
       expect(document).toContain('<main id="main-content">');
-      expect(document).toContain('<nav aria-label="Policies">');
+      expect(document).toContain('<footer class="site-foot">');
       expect(document).not.toContain('<script');
       expect(document).not.toMatch(/\ssrc="https?:\/\//u);
       expect(new TextEncoder().encode(document).byteLength).toBeLessThan(24_000);
@@ -63,7 +65,7 @@ describe('policy pages', () => {
 
   test('every internal link points at a route the service serves', () => {
     for (const path of POLICY_PATHS) {
-      const links = [...POLICY_PAGES[path]!.document.matchAll(/href="(\/[^"]*)"/gu)].map((match) => match[1]!);
+      const links = [...POLICY_PAGES[path]!.document.matchAll(/href="(\/[^"]*)"/gu)].map((match) => match[1]!.split('#')[0] || '/').filter((link) => !link.startsWith('/assets/'));
       for (const link of links) {
         expect(APP_ROUTES.has(link)).toBe(true);
       }

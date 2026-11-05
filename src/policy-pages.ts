@@ -12,12 +12,14 @@
  * launch checklist. The copy deliberately makes no security
  * certification claim and promises no perfect security.
  *
- * Mirrors the other routes: one self-contained document per policy, design
- * tokens duplicated on purpose, no client JavaScript, no external requests.
+ * One document per policy in the shared site shell (header, footer, base
+ * styles), with no client JavaScript and no external requests.
  */
 
+import { UPDATE_WAIT } from './notion-words';
 import { PROVISIONING_JOB_TTL_SECONDS } from './provisioning-job';
-import { STATUS_SESSION_TTL_SECONDS } from './status';
+import { SITE_BASE_STYLES, SITE_FONT_PRELOAD, siteFooterHtml, siteHeaderHtml } from './site-styles';
+import { NOTION_LINKS_TTL_SECONDS, STATUS_SESSION_TTL_SECONDS } from './status';
 
 export interface PolicyPage {
   readonly path: string;
@@ -27,98 +29,35 @@ export interface PolicyPage {
 
 const JOB_RETENTION_HOURS = PROVISIONING_JOB_TTL_SECONDS / 3600;
 const SESSION_HOURS = STATUS_SESSION_TTL_SECONDS / 3600;
+const NOTION_LINKS_DAYS = NOTION_LINKS_TTL_SECONDS / 86_400;
 
 const SUPPORT = '<a href="/support">Support</a>';
 
 const REPO = 'https://github.com/OffConstruct/notiongit';
 
-const STYLES = `
-  :root {
-    --bg: #ffffff;
-    --fg: #1f2328;
-    --muted: #57606a;
-    --accent: #0969da;
-    --accent-fg: #ffffff;
-    --border: #d0d7de;
-    --surface: #f6f8fa;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0d1117;
-      --fg: #e6edf3;
-      --muted: #8b949e;
-      --accent: #58a6ff;
-      --accent-fg: #0d1117;
-      --border: #30363d;
-      --surface: #161b22;
-    }
-  }
-  * { box-sizing: border-box; }
-  html { color-scheme: light dark; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    line-height: 1.55;
-  }
-  .skip-link {
-    position: absolute;
-    left: -9999px;
-    top: 0;
-    background: var(--accent);
-    color: var(--accent-fg);
-    padding: 0.75rem 1.25rem;
-    z-index: 10;
-  }
-  .skip-link:focus { left: 0.5rem; top: 0.5rem; }
-  a { color: var(--accent); }
-  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-  header { border-bottom: 1px solid var(--border); }
-  .nav-inner {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 1rem 1.5rem;
-  }
-  .wordmark { font-weight: 700; font-size: 1.1rem; color: var(--fg); text-decoration: none; }
-  main { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.5rem 3rem; }
-  h1 {
-    font-size: clamp(1.6rem, 4vw, 2.25rem);
-    margin: 0 0 1rem;
-    letter-spacing: -0.02em;
-  }
-  h2 { font-size: 1.25rem; margin: 2rem 0 0.5rem; }
-  .updated { color: var(--muted); margin: 0 0 1.5rem; }
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 0.75rem 0 1.5rem;
-    font-size: 0.95rem;
-  }
-  th, td {
-    border: 1px solid var(--border);
-    padding: 0.5rem 0.75rem;
-    text-align: left;
-    vertical-align: top;
-  }
+const STYLES = `${SITE_BASE_STYLES}
+  main { max-width: 46rem; margin: 0 auto; padding: 2.5rem var(--gutter) 3rem; }
+  main h1 { font-size: clamp(2rem, 5vw, 2.75rem); margin: 0 0 1rem; }
+  main h2 { font-size: 1.45rem; margin: 2.25rem 0 0.5rem; }
+  .updated { color: var(--muted); margin: 0 0 1.5rem; font: 0.9rem/1.5 var(--sans); }
+  .lede { font-size: 1.2rem; }
+  .ask { border: 1px solid var(--border); background: var(--surface); padding: 1.1rem 1.25rem; margin: 1.25rem 0 1.5rem; }
+  .ask p { margin: 0 0 0.75rem; }
+  .ask p:last-child { margin: 0.75rem 0 0; font: 0.9rem/1.5 var(--sans); color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; margin: 0.75rem 0 1.5rem; font: 0.95rem/1.5 var(--sans); }
+  th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; overflow-wrap: break-word; }
+  th:first-child, td:first-child { min-width: 9rem; }
   th { background: var(--surface); }
-  code {
-    font-family: ui-monospace, monospace;
-    font-size: 0.9em;
-    overflow-wrap: anywhere;
+  /* Narrow screens: each row becomes a card, its header shown by the cell. */
+  @media (max-width: 30rem) {
+    table, thead, tbody, tr, th, td { display: block; }
+    tr:has(> th) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    tr { border: 1px solid var(--border); margin: 0 0 0.75rem; }
+    td { border: 0; border-top: 1px solid var(--border); padding: 0.5rem 0.75rem; }
+    tr > td:first-child { border-top: 0; background: var(--surface); font-weight: 600; }
+    td[data-label]::before { content: attr(data-label) ": "; color: var(--muted); font-weight: 600; }
   }
-  footer {
-    border-top: 1px solid var(--border);
-    padding: 1.5rem;
-  }
-  footer nav {
-    max-width: 720px;
-    margin: 0 auto;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.25rem;
-    font-size: 0.9rem;
-  }
+  code { overflow-wrap: anywhere; }
 `;
 
 interface PolicyBody {
@@ -128,7 +67,7 @@ interface PolicyBody {
   readonly body: string;
 }
 
-const UPDATED = 'Updated September 2026';
+const UPDATED = 'Updated November 2026';
 
 const BODIES: readonly PolicyBody[] = [
   {
@@ -155,39 +94,39 @@ code in <a href="${REPO}">OffConstruct/notiongit</a>.</p>
 <tr><th>Record</th><th>Contents</th><th>Kept for</th></tr>
 <tr>
 <td>Setup record</td>
-<td>Your GitHub account id, login, account type, the App installation id, your
+<td data-label="Contents">Your GitHub account id, login, account type, the App installation id, your
 repository's name and URL, and the outcome of each setup step. It is tied to a
 random job id, not to any InkDrafts account.</td>
-<td>${JOB_RETENTION_HOURS} hours after the last update, then deleted
+<td data-label="Kept for">${JOB_RETENTION_HOURS} hours after the last update, then deleted
 automatically. This includes finished and failed setups.</td>
 </tr>
 <tr>
 <td>Template validation record</td>
-<td>Property names, property types, and select options of the Pages and Posts
+<td data-label="Contents">Property names, property types, and select options of the Pages and Posts
 databases in the Notion template you duplicated. InkDrafts reads this to verify
 the template was duplicated correctly. No page content is in it.</td>
-<td>${JOB_RETENTION_HOURS} hours. Reconnecting Notion replaces it.</td>
+<td data-label="Kept for">${JOB_RETENTION_HOURS} hours. Reconnecting Notion replaces it.</td>
 </tr>
 <tr>
 <td>Operational metrics</td>
-<td>Step names, outcomes, error codes, and durations for each setup, correlated
+<td data-label="Contents">Step names, outcomes, error codes, and durations for each setup, correlated
 only by the random job id. No account name, no repository name, no content.</td>
-<td>Written to operational logs kept for at most three days. InkDrafts keeps no
+<td data-label="Kept for">Written to operational logs kept for at most three days. InkDrafts keeps no
 long-lived aggregate of them.</td>
 </tr>
 <tr>
 <td>Abuse controls</td>
-<td>Short-lived counters that keep someone from starting many setups at once.
+<td data-label="Contents">Short-lived counters that keep someone from starting many setups at once.
 A counter contains a GitHub account id or a keyed hash of your network address,
 never the address itself.</td>
-<td>From one minute up to seven days with the deployed configuration.</td>
+<td data-label="Kept for">From one minute up to seven days with the deployed configuration.</td>
 </tr>
 <tr>
 <td>Dashboard session</td>
-<td>If you sign in to your dashboard, a cookie carries your GitHub login and
+<td data-label="Contents">If you sign in to your dashboard, a cookie carries your GitHub login and
 account id. The dashboard re-derives your site's state from GitHub on every
 visit. InkDrafts stores no account-to-site binding.</td>
-<td>${SESSION_HOURS} hours, or until you sign out of the dashboard.</td>
+<td data-label="Kept for">${SESSION_HOURS} hours, or until you sign out of the dashboard.</td>
 </tr>
 </table>
 
@@ -202,7 +141,7 @@ in Notion makes the stored token invalid. See
 <a href="/leaving">Leaving InkDrafts</a> for the steps.</p>
 
 <h2>Cookies</h2>
-<p>InkDrafts sets three cookies in total. None of them tracks you across other
+<p>InkDrafts sets four cookies in total. None of them tracks you across other
 sites, and there are no advertising or analytics cookies.</p>
 <ul>
 <li>Two short-lived state cookies protect the Notion connection and the
@@ -210,6 +149,10 @@ dashboard sign-in against tampering and replay. They are cleared when the
 authorization completes and expire within minutes regardless.</li>
 <li>The dashboard session cookie described above, which lasts
 ${SESSION_HOURS} hours.</li>
+<li>A cookie set by the page that finishes your setup. It holds the links to
+your InkDrafts page in Notion, so your dashboard can open it for you. It stays
+only in that browser, lasts ${NOTION_LINKS_DAYS} days, and is gone when you
+clear that browser's cookies.</li>
 </ul>
 
 <h2>What InkDrafts never does</h2>
@@ -408,25 +351,34 @@ ${SUPPORT} describes, and no email address is published for reports.</p>
     heading: 'Support',
     body: `
 <p class="updated">${UPDATED}</p>
-<p>InkDrafts is built and run in the open, and support goes through public
-channels.</p>
+<p class="lede">Stuck, or something looks wrong? Ask us. We answer every
+question.</p>
 
-<h2>Questions or problems with setup</h2>
-<p><a href="${REPO}/issues">Open an issue on OffConstruct/notiongit</a>. Include
-the <code>job_id</code> value from your setup page's address if you have it.
-It is a random identifier with no personal information, and it is the one
-thing that lets maintainers find what happened.</p>
-<p>Never post a token, password, or secret in an issue. InkDrafts will never
-ask you for one.</p>
+<div class="ask">
+<p><a class="button primary" href="${REPO}/issues/new?title=${encodeURIComponent('Question about my site')}&amp;body=${encodeURIComponent('What were you trying to do, and what happened?\n\n(This page is public. Do not paste passwords or private links.)')}">Ask a question</a></p>
+<p>This opens a short form on GitHub, where InkDrafts is built in the open.
+Sign in with the same GitHub account as your site. Your question is public,
+so never include a password or a private link.</p>
+</div>
 
-<h2>Problems with your site after setup</h2>
-<p>Your dashboard at <a href="/status">InkDrafts status</a> shows your site's
-last sync and publish and can run a sync now. For everything else, your
-repository's Actions tab shows every sync run with its logs.</p>
-<p>If syncing or publishing is failing everywhere, check the providers
-directly: <a href="https://www.githubstatus.com">GitHub status</a>,
-<a href="https://status.notion.so">Notion status</a>, and
-<a href="https://www.cloudflarestatus.com">Cloudflare status</a>.</p>
+<h2>Before you ask</h2>
+<ul>
+<li>Your <a href="/status">dashboard</a> shows whether your site is up to date,
+and lets you update it right away or fix a problem with one button.</li>
+<li>A change in Notion shows up on your site on its own, ${UPDATE_WAIT}. Check
+that its Status is Published.</li>
+<li>If many sites seem down at once, GitHub or Notion may be having trouble:
+<a href="https://www.githubstatus.com">GitHub status</a>,
+<a href="https://status.notion.so">Notion status</a>.</li>
+</ul>
+
+<details>
+<summary>Details for support</summary>
+<p>If a setup page showed an error code, include it in your question. Do not
+post the setup reference: it opens your setup page. A maintainer will ask for
+it privately if needed. Your site's Actions tab on GitHub keeps a log of every
+update, which helps with harder problems.</p>
+</details>
 
 <h2>Security reports</h2>
 <p>Use GitHub's &ldquo;Report a vulnerability&rdquo; on the InkDrafts
@@ -495,36 +447,25 @@ in the <a href="/privacy">Privacy Policy</a> age out within three days.</p>
   },
 ];
 
-function footerNav(current: string): string {
-  return `<nav aria-label="Policies">${BODIES
-    .filter((page) => page.path !== current)
-    .map((page) => `<a href="${page.path}">${page.title}</a>`)
-    .join('\n')}
-<a href="/">InkDrafts home</a></nav>`;
-}
-
 function policyDocument(page: PolicyBody): string {
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${page.title} — InkDrafts</title>
+<title>${page.title} | InkDrafts</title>
 <meta name="description" content="InkDrafts ${page.title.toLowerCase()}: what the service keeps, how it handles credentials, and how to reach support.">
+${SITE_FONT_PRELOAD}
 <style>${STYLES}</style>
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to content</a>
-<header>
-  <div class="nav-inner"><a class="wordmark" href="/">InkDrafts</a></div>
-</header>
+${siteHeaderHtml()}
 <main id="main-content">
 <h1>${page.heading}</h1>
 ${page.body}
 </main>
-<footer>
-${footerNav(page.path)}
-</footer>
+${siteFooterHtml()}
 </body>
 </html>`;
 }
