@@ -245,6 +245,19 @@ function siteLine(site: SiteStatus): string {
   return `<div class="site-line"><a class="button primary" href="${url}">Visit your site</a><span class="site-url">${display}</span></div>`;
 }
 
+/** "2 posts scheduled": posts with a date still ahead go live on that date. */
+export function scheduledInWords(posts: SummaryCounts | null): string | null {
+  const count = posts?.scheduled ?? 0;
+  if (count === 0) return null;
+  return `${plural(count, 'post', 'posts')} scheduled. ${count === 1 ? 'It appears' : 'Each one appears'} on your site on its date, on its own.`;
+}
+
+function skippedHtml(items: readonly SummaryItem[] | undefined): string {
+  if (!items?.length) return '';
+  return `<h3>Published, with something left out</h3>
+${itemsList(items, true)}`;
+}
+
 function latestUpdateCard(site: SiteStatus, problem: SiteProblem | null, token: string | null, nowMs: number): string {
   const sync = site.sync;
   let line: string;
@@ -258,10 +271,14 @@ function latestUpdateCard(site: SiteStatus, problem: SiteProblem | null, token: 
     line = `<p>An update started${sync.startedAtMs === null ? '' : ` ${timeHtml(sync.startedAtMs, nowMs)}`} and has not finished. You can start a fresh one.</p>`;
   } else {
     const when = sync.finishedAtMs === null ? null : timeHtml(sync.finishedAtMs, nowMs);
-    const words = 'source' in sync && sync.kind !== 'failed' ? `<p>${escapeHtml(changesInWords(sync.pages, sync.posts))}</p>` : '';
+    const scheduled = 'source' in sync ? scheduledInWords(sync.posts) : null;
+    const words = 'source' in sync && sync.kind !== 'failed'
+      ? `<p>${escapeHtml(changesInWords(sync.pages, sync.posts))}</p>${scheduled === null ? '' : `<p>${escapeHtml(scheduled)}</p>`}`
+      : '';
     line = sync.kind === 'failed'
       ? `<p>The last update${when === null ? '' : `, ${when},`} did not finish.</p>`
       : `<p>The last update finished${when === null ? '' : ` ${when}`}.</p>${words}`;
+    if ('source' in sync) line += skippedHtml(sync.skipped);
   }
   // While a fix is needed, the fix is the one button; Update now waits.
   const button = site.runInFlight || problem !== null ? '' : `<div class="actions">${postButton(token, 'sync', 'Update my site now', false)}</div>`;

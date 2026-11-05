@@ -247,6 +247,8 @@ export type SyncOutcome =
       /** Rows the summary names: the rows a guarded bulk delete would
        * remove, or the rows that failed. Absent in older summaries. */
       items?: readonly SummaryItem[];
+      /** Published rows that went live with a file or block left out. */
+      skipped?: readonly SummaryItem[];
     };
 
 /** One Notion row named by the run summary's optional `affected` list. */
@@ -265,6 +267,8 @@ export interface SummaryCounts {
   deleted: number;
   unchanged: number;
   errors: number;
+  /** Posts held back until their date (notiongit-sync 2.1.0); absent before. */
+  scheduled?: number;
 }
 
 export type SummaryFallbackReason = 'malformed' | 'unsupported_version';
@@ -357,6 +361,7 @@ export type SafeSummaryParse =
       posts: SummaryCounts | null;
       finishedAtMs: number | null;
       items?: readonly SummaryItem[];
+      skipped?: readonly SummaryItem[];
     }
   | { ok: false; reason: 'malformed' | 'unsupported_version' };
 
@@ -366,6 +371,7 @@ function summaryCounts(value: unknown): SummaryCounts | null | undefined {
   const record = value as Record<string, unknown>;
   const keys = ['created', 'updated', 'renamed', 'deleted', 'unchanged', 'errors'] as const;
   if (!keys.every((key) => Number.isSafeInteger(record[key]) && (record[key] as number) >= 0)) return undefined;
+  const scheduled = record.scheduled;
   return {
     created: record.created as number,
     updated: record.updated as number,
@@ -373,19 +379,30 @@ function summaryCounts(value: unknown): SummaryCounts | null | undefined {
     deleted: record.deleted as number,
     unchanged: record.unchanged as number,
     errors: record.errors as number,
+    ...(Number.isSafeInteger(scheduled) && (scheduled as number) > 0 ? { scheduled: scheduled as number } : {}),
   };
 }
 
-/** The dashboard's own sentence for each notiongit-sync `reason_code`; an
- * unknown code falls back to the summary's `reason`. */
-const REASON_COPY: Readonly<Record<string, string>> = {
-  duplicate_web_address: 'Another post already uses the same web address. Open one of them in Notion and change its Web address, for example by adding -2.',
-  read_failed: 'Notion did not hand it over this time. It will be tried again at the next update.',
-  unexpected: 'Something in it could not be converted. Try undoing your most recent change to it.',
+/** The dashboard's own sentence for each notiongit-sync `reason_code`, given
+ * the entry's `count` (skipped files or blocks); an unknown code falls back
+ * to the summary's `reason`. */
+const REASON_COPY: Readonly<Record<string, (count: number) => string>> = {
+  duplicate_web_address: () => 'Another post already uses the same web address. Open one of them in Notion and change its Web address, for example by adding -2.',
+  read_failed: () => 'Notion did not hand it over this time. It will be tried again at the next update.',
+  unexpected: () => 'Something in it could not be converted. Try undoing your most recent change to it.',
+  file_too_large: (count) => count === 1
+    ? 'A file in it is bigger than 20 MB, so it was left out. Upload a smaller copy in Notion.'
+    : `${count} files in it are bigger than 20 MB, so they were left out. Upload smaller copies in Notion.`,
+  file_type_unsupported: (count) => count === 1
+    ? 'A file in it is a kind websites cannot show, so it was left out.'
+    : `${count} files in it are a kind websites cannot show, so they were left out.`,
+  file_unavailable: (count) => `${count === 1 ? 'A file' : `${count} files`} could not be copied from Notion this time. It will be tried again at the next update.`,
+  blocks_unsupported: () => 'Part of it cannot be shown on a website, so it was left out: a page inside the page, a linked database, or something nested very deep.',
 };
 
-/** The optional `affected` list: kept only while every entry is well formed,
- * dropped (never fatal) otherwise, since the counts still tell the story. */
+/** The optional `affected` and `skipped` lists: kept only while every entry
+ * is well formed, dropped (never fatal) otherwise, since the counts still
+ * tell the story. */
 function summaryItems(value: unknown): SummaryItem[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const items: SummaryItem[] = [];
@@ -399,7 +416,7 @@ function summaryItems(value: unknown): SummaryItem[] | undefined {
       section: record.section === 'pages' || record.section === 'posts' ? record.section : null,
       title,
       reason: typeof record.reason_code === 'string' && Object.hasOwn(REASON_COPY, record.reason_code)
-        ? REASON_COPY[record.reason_code]!
+        ? REASON_COPY[record.reason_code]!(Number.isSafeInteger(record.count) && (record.count as number) > 0 ? record.count as number : 1)
         : typeof record.reason === 'string' && record.reason.trim() ? record.reason.trim().slice(0, 300) : null,
     });
   }
@@ -424,6 +441,8 @@ export function parseSafeSummary(text: string): SafeSummaryParse {
   const posts = summaryCounts(record.posts);
   if (pages === undefined || posts === undefined) return { ok: false, reason: 'malformed' };
   if (record.detail !== undefined && typeof record.detail !== 'string') return { ok: false, reason: 'malformed' };
+  const items = summaryItems(record.affected);
+  const skipped = summaryItems(record.skipped);
   return {
     ok: true,
     source: 'summary_v1',
@@ -433,7 +452,8 @@ export function parseSafeSummary(text: string): SafeSummaryParse {
     pages,
     posts,
     finishedAtMs: typeof record.finished_at === 'string' ? epochMs(record.finished_at) : null,
-    ...(summaryItems(record.affected) ? { items: summaryItems(record.affected) } : {}),
+    ...(items ? { items } : {}),
+    ...(skipped?.length ? { skipped } : {}),
   };
 }
 
@@ -464,6 +484,7 @@ function syncOutcomeOf(run: NotionSyncRunIdentity, summary: SafeSummaryParse | n
     finishedAtMs: summary.finishedAtMs ?? run.updatedAtMs ?? run.createdAtMs,
     runUrl: run.htmlUrl || null,
     ...(summary.items ? { items: summary.items } : {}),
+    ...(summary.skipped ? { skipped: summary.skipped } : {}),
   } as const;
   if (summary.result === 'success') return { kind: 'succeeded', ...outcome };
   if (summary.result === 'no_op') return { kind: 'no_op', ...outcome };
