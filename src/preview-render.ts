@@ -13,6 +13,7 @@
  * `#ink-manifest`, which the template validator keeps free of markup.
  */
 
+import { foldFontChoice } from './appearance-fonts';
 import { previewFallbackHeaders } from './http-headers';
 import { effectiveTweaks, findTheme, parseAppearanceParams, type TweakValue } from './theme-catalog';
 import { escapeHtml } from './theme-ui';
@@ -129,7 +130,7 @@ export async function previewRenderResponse(request: Request, themeId: string, a
   const url = new URL(request.url);
   const params = new URLSearchParams(url.search);
   params.set('theme', theme.id);
-  const parsed = parseAppearanceParams(params);
+  const parsed = parseAppearanceParams(foldFontChoice(params));
   const tweaks = parsed.kind === 'ok' ? parsed.appearance.tweaks : {};
   const staticUrl = new URL(theme.preview, url);
   // No asset binding (unit tests, or a misconfigured deploy): the static

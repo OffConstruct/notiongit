@@ -8,6 +8,7 @@
  * and the same audience filter from `theme-ui.ts`.
  */
 
+import { foldFontChoice, fontControlView } from './appearance-fonts';
 import { CONNECT_PATH } from './connect-page';
 import { pageHeaders } from './http-headers';
 import {
@@ -103,6 +104,7 @@ function pagerHtml(theme: CatalogTheme, position: 'head' | 'foot'): string {
 }
 
 export function themeDetailPage(theme: CatalogTheme, appearance: SiteAppearance): string {
+  const fonts = fontControlView(theme, appearance);
   const author = theme.author.url
     ? `<a href="${escapeHtml(theme.author.url)}">${escapeHtml(theme.author.name)}</a>`
     : escapeHtml(theme.author.name);
@@ -139,12 +141,12 @@ ${cta}
 </div>
 <fieldset>
 <legend>Make it yours</legend>
-${tweakFieldsHtml(theme, appearance, { fineTune: true })}
+${tweakFieldsHtml(fonts.theme, fonts.appearance, { fineTune: true })}
 </fieldset>
 <div class="cta-bar"><span>Step 1 of 3</span>${cta}</div>
 </form>
 </div>
-${customizerDataHtml(theme)}
+${customizerDataHtml(fonts.theme)}
 <div class="about">
 ${webfonts}
 <p class="muted">Good for: ${escapeHtml(audienceLine(theme))}. Design by ${author}.</p>
@@ -169,7 +171,7 @@ const PUBLIC_PAGE = { frames: false, scripts: false, publicMaxAgeSeconds: THEMES
 function chosenThemeRedirect(params: URLSearchParams): Response | null {
   const theme = findTheme(params.get('theme') ?? '');
   if (!theme) return null;
-  const parsed = parseAppearanceParams(params);
+  const parsed = parseAppearanceParams(foldFontChoice(params));
   const query = parsed.kind === 'ok' ? tweakQuery(parsed.appearance) : '';
   return new Response(null, {
     status: 303,
@@ -200,7 +202,7 @@ export function themeDetailResponse(request: Request, id: string): Response {
   const url = new URL(request.url);
   const params = new URLSearchParams(url.search);
   params.set('theme', theme.id);
-  const parsed = parseAppearanceParams(params);
+  const parsed = parseAppearanceParams(foldFontChoice(params));
   const appearance: SiteAppearance = parsed.kind === 'ok' ? parsed.appearance : { v: 1, themeId: theme.id, tweaks: {} };
   const canonical = tweakQuery(appearance);
   if (url.search.slice(1) !== canonical) {

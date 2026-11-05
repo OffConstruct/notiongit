@@ -98,6 +98,7 @@
       var v = valid(tw, raw, mode);
       if (v !== undefined && v !== tw.default) out[tw.key] = v;
     });
+    if (out.font === 'device') { delete out.font; out.webfonts = false; }
     return out;
   }
 

@@ -97,6 +97,7 @@ import { parseAppearanceParams, parseStoredAppearance, tweakQuery, type SiteAppe
 import { previewMissPage, themeDetailResponse, themesGalleryResponse } from './themes-page';
 import { previewRenderResponse } from './preview-render';
 import { appearanceHome, appearanceSave } from './appearance';
+import { foldFontChoice } from './appearance-fonts';
 import { CONNECT_PATH, connectPageResponse } from './connect-page';
 import { isSameOriginPost, pageHeaders, previewFallbackHeaders } from './http-headers';
 export {
@@ -667,7 +668,7 @@ async function beginGithubInstall(request: Request, env: Partial<Env>): Promise<
   const requestedJobId = url.searchParams.get('job_id') || url.searchParams.get('jobId');
   const jobId = requestedJobId || crypto.randomUUID();
   if (!validJobId(jobId)) return failureResponse({ code: 'invalid_job_id', status: 400, retryAfterSeconds: null });
-  const appearance = parseAppearanceParams(url.searchParams);
+  const appearance = parseAppearanceParams(foldFontChoice(url.searchParams));
   if (appearance.kind === 'unknown_theme' || appearance.kind === 'oversize') {
     return errorPageResponse({
       code: appearance.kind === 'unknown_theme' ? 'theme_unknown' : 'theme_request_invalid',

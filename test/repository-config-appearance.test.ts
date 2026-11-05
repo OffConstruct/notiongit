@@ -31,7 +31,7 @@ function decode(content: string): string {
 
 /** The template's _config.yml head, as generated repositories start. */
 const TEMPLATE_CONFIG = `# Neutral template defaults.
-title: "NotionGit"
+title: "My website"
 description: "A Notion-powered Jekyll site."
 url: ""
 baseurl: ""
@@ -162,7 +162,7 @@ describe('patchSiteConfig', () => {
   });
 
   test('a 409 rereads the newer file (a sync commit) and reapplies onto it', async () => {
-    const synced = TEMPLATE_CONFIG.replace('title: "NotionGit"', 'title: "Alice Writes"');
+    const synced = TEMPLATE_CONFIG.replace('title: "My website"', 'title: "Alice Writes"');
     const { fetcher, requests } = scriptedFetcher([
       file(TEMPLATE_CONFIG, 'sha-1'),
       () => new Response('{}', { status: 409 }),

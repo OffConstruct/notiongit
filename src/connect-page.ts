@@ -11,6 +11,7 @@
  * exports the document and a response builder.
  */
 
+import { foldFontChoice } from './appearance-fonts';
 import { pageHeaders } from './http-headers';
 import { findTheme, parseAppearanceParams, tweakQuery, type CatalogTheme, type SiteAppearance } from './theme-catalog';
 import { escapeHtml, pageShell, schemeChoices, schemeDefault } from './theme-ui';
@@ -111,7 +112,7 @@ const CONNECT_PAGE_HEADERS = { frames: false, scripts: false, publicMaxAgeSecond
 /** Invalid or oversize choices fall back to "no look picked" rather than an
  * error: nothing here is worth stopping a signup for. */
 export function connectPageResponse(request: Request): Response {
-  const parsed = parseAppearanceParams(new URL(request.url).searchParams);
+  const parsed = parseAppearanceParams(foldFontChoice(new URL(request.url).searchParams));
   const appearance = parsed.kind === 'ok' ? parsed.appearance : null;
   return new Response(connectPage(appearance), { status: 200, headers: pageHeaders(CONNECT_PAGE_HEADERS) });
 }

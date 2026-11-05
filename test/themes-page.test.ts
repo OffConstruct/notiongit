@@ -296,3 +296,20 @@ describe('preview serving', () => {
     expect(text).toContain('href="/previews/classic/"');
   });
 });
+
+describe('one font control on the theme page', () => {
+  test('an all-web-font design offers device fonts in the list and no separate switch', async () => {
+    const { text } = await get('/themes/verso');
+    expect(text).not.toContain('name="t_webfonts"');
+    expect(text).toContain('name="t_font" value="device"');
+  });
+
+  test('choosing device fonts carries web fonts off into the preview link and the signup hand-off', async () => {
+    const detail = await get('/themes/verso?t_font=device');
+    expect(detail.response.status).toBe(303);
+    expect(detail.response.headers.get('location')).toBe('/themes/verso?t_webfonts=false');
+    const connect = await get('/connect?theme=verso&t_font=device');
+    expect(connect.text).toContain('<input type="hidden" name="t_webfonts" value="false">');
+    expect(connect.text).not.toContain('name="t_font"');
+  });
+});
