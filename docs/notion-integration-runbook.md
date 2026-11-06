@@ -20,6 +20,11 @@ Cloudflare secret storage.
 
 ## Target connection settings
 
+The live connection is owned by the OffConstruct Notion account, in its
+OffConstruct workspace (since 2026-11-05). An older connection with the same
+name stays only for sites that connected before then: their sync tokens were
+issued by it, so deleting it would stop those sites until they reconnect.
+
 Create a **public connection** named `InkDrafts` in the Notion Creator
 dashboard. Select **Any workspace** as the installation scope so users can
 authorize it without a manual workspace allowlist. Marketplace listing is a
