@@ -10,6 +10,7 @@ import {
   PROGRESS_POLL_INTERVAL_MS,
   PROGRESS_POLL_MAX_INTERVAL_MS,
 } from '../src/progress-page';
+import { NOTION_WORDS } from '../src/notion-words';
 
 const NOW = 1_000_000;
 
@@ -228,7 +229,7 @@ describe('progress page', () => {
   test('without captured links the card still has a working button and says where to look', () => {
     const page = progressPage('job-123', SUCCEEDED);
     expect(page).toContain('<a class="button primary" href="https://www.notion.so/">Open Notion</a>');
-    expect(page).toContain('It starts out named “InkDrafts starter site”.');
+    expect(page).toContain(`It starts out named “${NOTION_WORDS.root}”.`);
     expect(page).not.toContain('href=""');
   });
 

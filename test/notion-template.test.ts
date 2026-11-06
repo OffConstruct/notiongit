@@ -14,6 +14,7 @@ import {
   saveNotionTemplateResolution,
   validateNotionTemplateSchemas,
 } from '../src/notion-template';
+import { NOTION_TEMPLATE_SCHEMA_VERSION } from '../src/notion-words';
 
 // Synthetic identifiers only — no real workspace IDs, tokens, or content.
 const ROOT_DASHED = '55555555-5555-4555-8555-555555555555';
@@ -253,7 +254,7 @@ describe('Notion template resolution', () => {
 
     expect(resolution.pagesDatabaseId).toBe(PAGES_DB);
     expect(resolution.postsDatabaseId).toBe(POSTS_DB);
-    expect(resolution.templateSchemaVersion).toBe(1);
+    expect(resolution.templateSchemaVersion).toBe(NOTION_TEMPLATE_SCHEMA_VERSION);
     expect(resolution.scannedDatabaseCount).toBe(3);
     expect(resolution.pagesSchema.propertyTypes['Nav Order']).toBe('number');
     expect(resolution.pagesSchema.optionNames.Status).toEqual(['Draft', 'Published']);

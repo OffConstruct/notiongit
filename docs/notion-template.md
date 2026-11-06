@@ -6,7 +6,8 @@ workspace IDs, private content or credentials. Build the page in a disposable
 workspace first, check it with [Before you publish it](#before-you-publish-it),
 then make that page public and set it as the connection's template.
 
-The page is built by hand: nothing in this repository generates it. A change
+The page is built by hand or through Notion's own web API from a signed-in
+browser; nothing in this repository generates it. A change
 to this sheet reaches owners only after someone rebuilds and republishes the
 public page.
 
@@ -14,8 +15,8 @@ This sheet describes **template version 2**. Version 1 (the "InkDrafts
 starter site" page with `Slug`, `Nav Order`, `Show in Nav`, `Publish Date`
 and the `home` / `blog-list` / `blog` / `markdown` Type values) stays
 supported: owners keep the copy they duplicated, and validation and the sync
-accept both versions. See [Release order](#release-order) before publishing
-version 2.
+accept both versions. Version 2 is the public template since 2026-11-05
+(steps in [Release order](#release-order)).
 
 ## Who reads this page
 
@@ -335,9 +336,8 @@ meaning. Each required column is matched through its list of accepted names
 The sync engine reads the same name lists (`PAGE_COLUMNS` / `POST_COLUMNS`
 in notiongit-sync). Change both together.
 
-`NOTION_TEMPLATE_SCHEMA_VERSION` stays `1` until the version 2 page is
-public; it moves to `2` in the same change that switches the template (see
-below).
+`NOTION_TEMPLATE_SCHEMA_VERSION` is `2`, matching the public page. It moves
+in the same change that switches the template (see below).
 
 ## Onboarding validation
 

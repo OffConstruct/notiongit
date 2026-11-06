@@ -38,6 +38,7 @@ import {
 } from '../src/status';
 import { changesInWords, statusPage } from '../src/status-page';
 import { loadProvisioningJob } from '../src/provisioning-job';
+import { NOTION_WORDS } from '../src/notion-words';
 
 class MemoryKV {
   private values = new Map<string, string>();
@@ -1494,7 +1495,7 @@ describe('the status page as the owner\'s home', () => {
   test('without saved links the card opens Notion and says where to look', async () => {
     const { html } = await statusHtmlFor(healthySiteHandler);
     expect(html).toContain('<a class="button primary" href="https://www.notion.so/">Open Notion</a>');
-    expect(html).toContain('It starts out named “InkDrafts starter site”.');
+    expect(html).toContain(`It starts out named “${NOTION_WORDS.root}”.`);
   });
 
   test('the latest run from any trigger is shown, so a failed scheduled run is not hidden', async () => {

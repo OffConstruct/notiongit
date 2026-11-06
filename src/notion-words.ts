@@ -8,12 +8,10 @@
 
 /**
  * Bumped with the template build sheet when a required property changes.
- * Stays 1 while the public template is v1: the v2 build sheet in
- * docs/notion-template.md goes public only after notiongit-sync 2.1.0 is
- * pinned by the site template, and this moves to 2 in that same change.
- * Validation below already accepts both v1 and v2 copies.
+ * The public template is v2 (see docs/notion-template.md, Release order).
+ * Validation still accepts v1 copies that owners duplicated earlier.
  */
-export const NOTION_TEMPLATE_SCHEMA_VERSION: number = 1;
+export const NOTION_TEMPLATE_SCHEMA_VERSION: number = 2;
 
 export interface NotionWords {
   /** The owner's top Notion page, as the template names it. */
